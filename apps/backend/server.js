@@ -1,24 +1,24 @@
 'use strict';
 
-const express      = require('express');
-const http         = require('http');
-const cors         = require('cors');
-const helmet       = require('helmet');
-const morgan       = require('morgan');
-const { Server }   = require('socket.io');
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { Server } = require('socket.io');
 
-const env          = require('./config/env');
-const db           = require('./config/db');
-const redisClient  = require('./config/redis');
+const env = require('./config/env');
+const db = require('./config/db');
+const redisClient = require('./config/redis');
 const errorHandler = require('./shared/middleware/errorHandler');
 const requestLogger = require('./shared/middleware/requestLogger');
 
 // ── Route imports (Phase 1 — auth & users) ──
-const authRoutes  = require('./modules/auth/auth.routes');
-const userRoutes  = require('./modules/users/users.routes');
-const fileRoutes  = require('./modules/files/files.routes');
+const authRoutes = require('./modules/auth/auth.routes');
+const userRoutes = require('./modules/users/users.routes');
+const fileRoutes = require('./modules/files/files.routes');
 
-const app    = express();
+const app = express();
 const server = http.createServer(app);
 
 // ── Socket.io (real-time notifications) ─────
@@ -55,7 +55,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ── API Routes ──────────────────────────────
-app.use('/api/v1/auth',  authRoutes);
+app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/files', fileRoutes);
 
