@@ -1,0 +1,68 @@
+'use strict';
+
+const fs          = require('fs');
+const service     = require('./files.service');
+const ApiResponse = require('../../shared/utils/apiResponse');
+const ApiError    = require('../../shared/utils/apiError');
+
+// Upload
+async function upload(req, res, next) {
+  try {
+    if (!req.file) throw ApiError.badRequest('No file provided');
+
+    const { context, ownerId, isPublic } = req.body;
+    if (!context) throw ApiError.badRequest('File context is required (e.g. lesson_video, avatar)');
+    if (!ownerId) throw ApiError.badRequest('ownerId is required');
+
+    const file = await service.saveFile({
+      uploadedFile: req.file,
+      context,
+      ownerId,
+      uploadedBy: req.user.id,
+      isPublic: isPublic === 'true',
+    });
+
+    ApiResponse.created(res, { file }, 'File uploaded successfully');
+  } catch (err) {
+    // If Multer put a temp file and we error out, clean it up.
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+    next(err);
+  }
+}
+
+// Serve private file
+// Public files are served directly by Nginx.
+// This endpoint handles auth-gated private files.
+async function serve(req, res, next) {
+  try {
+    const { absPath, mimeType } = await service.getFilePath(req.params.id);
+
+    // Optional: add access control checks here (e.g. enrollment check)
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Inline for images/PDFs, attachment for downloads
+    const inline = mimeType.startsWith('image/') || mimeType === 'application/pdf';
+    res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
+
+    const stream = fs.createReadStream(absPath);
+    stream.on('error', () => next(ApiError.notFound('File not found')));
+    stream.pipe(res);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Soft delete
+async function remove(req, res, next) {
+  try {
+    await service.deleteFile(req.params.id, req.user.id);
+    ApiResponse.success(res, {}, 'File deleted');
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { upload, serve, remove };
