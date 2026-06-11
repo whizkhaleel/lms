@@ -67,6 +67,7 @@ services:
       - .env
     volumes:
       - ./apps/backend:/app
+      - ./database:/app/database:ro
       - /app/node_modules
       # The critical mount: lmsdata lives here
       - lmsdata:/app/lmsdata

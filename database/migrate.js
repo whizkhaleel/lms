@@ -16,13 +16,22 @@ const path = require('path');
 const Module = require('module');
 
 const ROOT_DIR = path.join(__dirname, '..');
-const BACKEND_NODE_MODULES = path.join(ROOT_DIR, 'apps', 'backend', 'node_modules');
+const NODE_MODULE_DIRS = [
+  path.join(ROOT_DIR, 'apps', 'backend', 'node_modules'),
+  path.join(ROOT_DIR, 'node_modules'),
+  path.join(process.cwd(), 'node_modules'),
+];
 
-if (!module.paths.includes(BACKEND_NODE_MODULES)) {
-  module.paths.push(BACKEND_NODE_MODULES);
-  process.env.NODE_PATH = process.env.NODE_PATH
-    ? `${process.env.NODE_PATH}${path.delimiter}${BACKEND_NODE_MODULES}`
-    : BACKEND_NODE_MODULES;
+for (const nodeModulesDir of NODE_MODULE_DIRS) {
+  if (fs.existsSync(nodeModulesDir) && !module.paths.includes(nodeModulesDir)) {
+    module.paths.push(nodeModulesDir);
+    process.env.NODE_PATH = process.env.NODE_PATH
+      ? `${process.env.NODE_PATH}${path.delimiter}${nodeModulesDir}`
+      : nodeModulesDir;
+  }
+}
+
+if (process.env.NODE_PATH) {
   Module._initPaths();
 }
 
@@ -36,6 +45,7 @@ const SEEDS_DIR = path.join(__dirname, 'seeds');
 const args = process.argv.slice(2);
 const SEED = args.includes('--seed');
 const RESET = args.includes('--reset');
+const IN_DOCKER = fs.existsSync('/.dockerenv');
 
 function env(name, fallbackName, defaultValue) {
   return process.env[name] || process.env[fallbackName] || defaultValue;
@@ -43,11 +53,11 @@ function env(name, fallbackName, defaultValue) {
 
 async function getClient() {
   const client = new Client({
-    host: env('DB_HOST', 'POSTGRES_HOST', 'localhost'),
-    port: parseInt(env('DB_PORT', 'POSTGRES_PORT', '5432'), 10),
-    database: env('DB_NAME', 'POSTGRES_DB', 'lms_db'),
-    user: env('DB_USER', 'POSTGRES_USER', 'lms_user'),
-    password: env('DB_PASSWORD', 'POSTGRES_PASSWORD'),
+    host: IN_DOCKER ? env('POSTGRES_HOST', 'DB_HOST', 'postgres') : env('DB_HOST', 'POSTGRES_HOST', 'localhost'),
+    port: parseInt(IN_DOCKER ? env('POSTGRES_PORT', 'DB_PORT', '5432') : env('DB_PORT', 'POSTGRES_PORT', '5432'), 10),
+    database: IN_DOCKER ? env('POSTGRES_DB', 'DB_NAME', 'lms_db') : env('DB_NAME', 'POSTGRES_DB', 'lms_db'),
+    user: IN_DOCKER ? env('POSTGRES_USER', 'DB_USER', 'lms_user') : env('DB_USER', 'POSTGRES_USER', 'lms_user'),
+    password: IN_DOCKER ? env('POSTGRES_PASSWORD', 'DB_PASSWORD') : env('DB_PASSWORD', 'POSTGRES_PASSWORD'),
   });
 
   await client.connect();
@@ -138,7 +148,9 @@ async function main() {
     console.log('--------------------');
 
     client = await getClient();
-    console.log(`Connected to: ${env('DB_NAME', 'POSTGRES_DB', 'lms_db')}@${env('DB_HOST', 'POSTGRES_HOST', 'localhost')}\n`);
+    const database = IN_DOCKER ? env('POSTGRES_DB', 'DB_NAME', 'lms_db') : env('DB_NAME', 'POSTGRES_DB', 'lms_db');
+    const host = IN_DOCKER ? env('POSTGRES_HOST', 'DB_HOST', 'postgres') : env('DB_HOST', 'POSTGRES_HOST', 'localhost');
+    console.log(`Connected to: ${database}@${host}\n`);
 
     if (RESET) {
       if (process.env.NODE_ENV === 'production') {
