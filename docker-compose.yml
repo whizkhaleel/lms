@@ -111,8 +111,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # auto-run migrations on first start
-      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+      # Runs ALL files in /init on first container creation (ordered by filename).
+      # Includes: migrations (001-003) + seed admin user (004).
+      # NOTE: only runs when pgdata volume is empty (fresh start).
+      # To re-run: docker compose down -v  then  docker compose up
+      - ./database/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5432:5432"
     healthcheck:
