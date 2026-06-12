@@ -7,7 +7,7 @@
 --  The database never stores file content.
 -- ─────────────────────────────────────────────
 
-CREATE TABLE files (
+CREATE TABLE IF NOT EXISTS files (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Original name the user uploaded
@@ -42,11 +42,17 @@ CREATE TABLE files (
   created_at       TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_files_sha256       ON files(sha256_hash);
-CREATE INDEX idx_files_uploaded_by  ON files(uploaded_by);
-CREATE INDEX idx_files_context      ON files(context);
-CREATE INDEX idx_files_deleted_at   ON files(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_files_sha256       ON files(sha256_hash);
+CREATE INDEX IF NOT EXISTS idx_files_uploaded_by  ON files(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_files_context      ON files(context);
+CREATE INDEX IF NOT EXISTS idx_files_deleted_at   ON files(deleted_at) WHERE deleted_at IS NULL;
 
 -- Add avatar FK to users now that files table exists
-ALTER TABLE users ADD CONSTRAINT fk_users_avatar
-  FOREIGN KEY (avatar_file_id) REFERENCES files(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_users_avatar') THEN
+    ALTER TABLE users ADD CONSTRAINT fk_users_avatar
+      FOREIGN KEY (avatar_file_id) REFERENCES files(id) ON DELETE SET NULL;
+  END IF;
+END
+$$;

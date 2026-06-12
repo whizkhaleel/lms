@@ -13,7 +13,7 @@ const pool = new Pool({
   // Pool config — tuned for production
   max:             20,   // max connections in pool
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,
 
   // SSL for production
   ssl: env.NODE_ENV === 'production'
@@ -33,15 +33,26 @@ pool.on('error', (err) => {
   process.exit(-1);
 });
 
-// Test connection on startup
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('[DB] Failed to connect to PostgreSQL:', err.message);
-    process.exit(1);
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function checkConnection({ retries = 10, delayMs = 2000 } = {}) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const client = await pool.connect();
+      client.release();
+      console.log(`[DB] Connected to PostgreSQL - ${env.POSTGRES_DB}`);
+      return;
+    } catch (err) {
+      console.error(`[DB] Connection attempt ${attempt}/${retries} failed: ${err.message}`);
+      if (attempt === retries) {
+        throw err;
+      }
+      await wait(delayMs);
+    }
   }
-  release();
-  console.log(`[DB] Connected to PostgreSQL — ${env.POSTGRES_DB}`);
-});
+}
 
 /**
  * Convenience wrapper for single queries.
@@ -51,6 +62,7 @@ module.exports = {
   query: (text, params) => pool.query(text, params),
   end:   ()            => pool.end(),
   pool,
+  checkConnection,
 
   /**
    * Transaction helper.

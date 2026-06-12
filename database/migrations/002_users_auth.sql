@@ -3,7 +3,7 @@
 -- ─────────────────────────────────────────────
 
 -- ── Users ─────────────────────────────────────
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email                VARCHAR(255) NOT NULL UNIQUE,
   password_hash        VARCHAR(255),               -- NULL for OAuth-only users
@@ -24,13 +24,13 @@ CREATE TABLE users (
   deleted_at           TIMESTAMP                   -- soft delete
 );
 
-CREATE INDEX idx_users_email       ON users(email);
-CREATE INDEX idx_users_role        ON users(role);
-CREATE INDEX idx_users_status      ON users(status);
-CREATE INDEX idx_users_deleted_at  ON users(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_users_email       ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role        ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status      ON users(status);
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at  ON users(deleted_at) WHERE deleted_at IS NULL;
 
 -- ── Email Verification Tokens ─────────────────
-CREATE TABLE email_verification_tokens (
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token      VARCHAR(255) NOT NULL UNIQUE,
@@ -39,11 +39,11 @@ CREATE TABLE email_verification_tokens (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_evt_token   ON email_verification_tokens(token);
-CREATE INDEX idx_evt_user_id ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_evt_token   ON email_verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_evt_user_id ON email_verification_tokens(user_id);
 
 -- ── Password Reset Tokens ─────────────────────
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token      VARCHAR(255) NOT NULL UNIQUE,
@@ -52,11 +52,11 @@ CREATE TABLE password_reset_tokens (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_prt_token   ON password_reset_tokens(token);
-CREATE INDEX idx_prt_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_prt_token   ON password_reset_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_prt_user_id ON password_reset_tokens(user_id);
 
 -- ── Refresh Tokens ────────────────────────────
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash  VARCHAR(255) NOT NULL UNIQUE,  -- hashed — never store raw
@@ -67,13 +67,13 @@ CREATE TABLE refresh_tokens (
   created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_rt_user_id    ON refresh_tokens(user_id);
-CREATE INDEX idx_rt_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_rt_user_id    ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_rt_token_hash ON refresh_tokens(token_hash);
 
 -- ── Audit Log ─────────────────────────────────
 -- Every important state change is recorded here.
 -- Never delete from this table.
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id    UUID REFERENCES users(id) ON DELETE SET NULL,
   action      VARCHAR(100) NOT NULL,       -- 'user.created', 'course.published'
@@ -86,10 +86,10 @@ CREATE TABLE audit_logs (
   created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_actor_id    ON audit_logs(actor_id);
-CREATE INDEX idx_audit_action      ON audit_logs(action);
-CREATE INDEX idx_audit_entity      ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_created_at  ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_actor_id    ON audit_logs(actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action      ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_entity      ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created_at  ON audit_logs(created_at);
 
 -- ── updated_at trigger ────────────────────────
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -99,6 +99,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 
 CREATE TRIGGER trg_users_updated_at
   BEFORE UPDATE ON users

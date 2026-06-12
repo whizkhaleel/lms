@@ -7,6 +7,7 @@ const client = createClient({
   socket: {
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,
+    connectTimeout: 10000,
   },
   password: env.REDIS_PASSWORD,
 });
@@ -23,10 +24,27 @@ client.on('reconnecting', () => {
   console.warn('[Redis] Reconnecting...');
 });
 
-// Connect immediately
-client.connect().catch((err) => {
-  console.error('[Redis] Failed to connect:', err);
-  process.exit(1);
-});
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+client.connectWithRetry = async function connectWithRetry({ retries = 10, delayMs = 2000 } = {}) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      if (!client.isOpen) {
+        await client.connect();
+      }
+      await client.ping();
+      console.log('[Redis] Ready');
+      return;
+    } catch (err) {
+      console.error(`[Redis] Connection attempt ${attempt}/${retries} failed: ${err.message}`);
+      if (attempt === retries) {
+        throw err;
+      }
+      await wait(delayMs);
+    }
+  }
+};
 
 module.exports = client;

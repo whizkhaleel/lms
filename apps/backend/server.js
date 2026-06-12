@@ -87,8 +87,13 @@ io.on('connection', (socket) => {
 // ── Start server ─────────────────────────────
 const PORT = env.BACKEND_PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`
+async function start() {
+  try {
+    await db.checkConnection();
+    await redisClient.connectWithRetry();
+
+    server.listen(PORT, () => {
+      console.log(`
 ╔══════════════════════════════════════╗
 ║       LMS Backend — Running          ║
 ║  Port    : ${PORT}                       ║
@@ -96,14 +101,27 @@ server.listen(PORT, () => {
 ║  DB      : ${env.POSTGRES_DB}          ║
 ╚══════════════════════════════════════╝
   `);
-});
+    });
+  } catch (err) {
+    console.error('[Server] Startup failed:', err.message);
+    await db.end().catch(() => {});
+    if (redisClient.isOpen) {
+      await redisClient.quit().catch(() => {});
+    }
+    process.exit(1);
+  }
+}
+
+start();
 
 // ── Graceful shutdown ────────────────────────
 process.on('SIGTERM', async () => {
   console.log('[Server] SIGTERM received — shutting down gracefully');
   server.close(async () => {
     await db.end();
-    await redisClient.quit();
+    if (redisClient.isOpen) {
+      await redisClient.quit();
+    }
     console.log('[Server] Shut down complete');
     process.exit(0);
   });
