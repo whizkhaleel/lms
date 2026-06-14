@@ -1,6 +1,6 @@
 'use strict';
 
-const db       = require('../../config/db');
+const db = require('../../config/db');
 const ApiError = require('../../shared/utils/ApiError');
 const eventBus = require('../../shared/events/eventBus');
 
@@ -63,7 +63,7 @@ async function heartbeat({ userId, lessonId, courseId = null, positionSecs, watc
   const lesson = await resolveLesson(lessonId, courseId);
   const enrollment = await getEnrollment(userId, lesson.course_id);
 
-  const duration      = lesson.duration_seconds || 0;
+  const duration = lesson.duration_seconds || 0;
   const shouldComplete = duration > 0 && watchedSecs >= duration * 0.8;
 
   const { rows } = await db.query(
@@ -91,7 +91,7 @@ async function heartbeat({ userId, lessonId, courseId = null, positionSecs, watc
        first_watched_at    = COALESCE(lesson_progress.first_watched_at, NOW())
      RETURNING *`,
     [userId, lessonId, lesson.course_id, enrollment.id,
-     positionSecs, watchedSecs, shouldComplete]
+      positionSecs, watchedSecs, shouldComplete]
   );
 
   const progress = rows[0];
@@ -103,8 +103,8 @@ async function heartbeat({ userId, lessonId, courseId = null, positionSecs, watc
   return {
     lessonId,
     watchPosition: progress.watch_position_secs,
-    watchedSecs:   progress.watched_secs,
-    isCompleted:   progress.is_completed,
+    watchedSecs: progress.watched_secs,
+    isCompleted: progress.is_completed,
   };
 }
 
@@ -175,10 +175,10 @@ async function recomputeCourseProgress(userId, courseId, enrollmentId) {
     [userId, courseId]
   );
 
-  const stats   = statsRows[0];
-  const total   = parseInt(stats.total_lessons,     10);
-  const done    = parseInt(stats.completed_lessons, 10);
-  const watched = parseInt(stats.total_watched_secs,10);
+  const stats = statsRows[0];
+  const total = parseInt(stats.total_lessons, 10);
+  const done = parseInt(stats.completed_lessons, 10);
+  const watched = parseInt(stats.total_watched_secs, 10);
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
   const isComplete = percent === 100;
 
@@ -187,12 +187,12 @@ async function recomputeCourseProgress(userId, courseId, enrollmentId) {
     'SELECT last_activity_date, current_streak_days, longest_streak_days FROM course_progress WHERE user_id = $1 AND course_id = $2',
     [userId, courseId]
   );
-  const existing        = cpRows[0];
-  const today           = new Date().toISOString().split('T')[0];
-  const lastDate        = existing?.last_activity_date
+  const existing = cpRows[0];
+  const today = new Date().toISOString().split('T')[0];
+  const lastDate = existing?.last_activity_date
     ? new Date(existing.last_activity_date).toISOString().split('T')[0]
     : null;
-  const yesterday       = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
 
   let currentStreak = existing?.current_streak_days || 0;
   let longestStreak = existing?.longest_streak_days || 0;
@@ -232,8 +232,8 @@ async function recomputeCourseProgress(userId, courseId, enrollmentId) {
        last_activity_date  = $11::date
      RETURNING *`,
     [userId, courseId, enrollmentId,
-     total, done, percent, watched, isComplete,
-     currentStreak, longestStreak, today]
+      total, done, percent, watched, isComplete,
+      currentStreak, longestStreak, today]
   );
 
   // ── Mirror progress into enrollments table ────
@@ -369,15 +369,15 @@ async function getDashboard(userId) {
   );
 
   // Summary stats across all courses
-  const totalCompleted   = rows.filter(r => r.is_completed).length;
-  const inProgress       = rows.filter(r => !r.is_completed && r.percent_complete > 0).length;
-  const notStarted       = rows.filter(r => r.percent_complete === 0).length;
+  const totalCompleted = rows.filter(r => r.is_completed).length;
+  const inProgress = rows.filter(r => !r.is_completed && r.percent_complete > 0).length;
+  const notStarted = rows.filter(r => r.percent_complete === 0).length;
   const totalWatchedSecs = rows.reduce((a, r) => a + parseInt(r.total_watched_secs, 10), 0);
 
   return {
     summary: {
       totalEnrolled: rows.length,
-      completed:     totalCompleted,
+      completed: totalCompleted,
       inProgress,
       notStarted,
       totalWatchedHours: Math.round(totalWatchedSecs / 3600 * 10) / 10,
