@@ -12,16 +12,16 @@ const db            = require('./config/db');
 const redisClient   = require('./config/redis');
 const errorHandler  = require('./shared/middleware/errorHandler');
 const requestLogger = require('./shared/middleware/requestLogger');
+const eventBus      = require('./shared/events/eventBus');
 
 // ── Route imports ─────────────────────────────
-// Phase 1
 const authRoutes       = require('./modules/auth/auth.routes');
 const userRoutes       = require('./modules/users/users.routes');
 const fileRoutes       = require('./modules/files/files.routes');
-// Phase 2
 const courseRoutes     = require('./modules/courses/courses.routes');
 const lessonRoutes     = require('./modules/lessons/lessons.routes');
 const enrollmentRoutes = require('./modules/enrollments/enrollments.routes');
+const progressRoutes   = require('./modules/progress/progress.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -33,7 +33,6 @@ const io = new Server(server, {
 app.set('io', io);
 
 // ── Raw body for Stripe webhooks ──────────────
-// Must be BEFORE express.json()
 app.use('/api/v1/enrollments/webhook/stripe',
   express.raw({ type: 'application/json' }),
   (req, res, next) => { req.rawBody = req.body; next(); }
@@ -63,14 +62,15 @@ app.get('/api/health', async (req, res) => {
 });
 
 // ── API Routes ────────────────────────────────
-app.use('/api/v1/auth',        authRoutes);
-app.use('/api/v1/users',       userRoutes);
-app.use('/api/v1/files',       fileRoutes);
-app.use('/api/v1/courses',     courseRoutes);
+app.use('/api/v1/auth',                      authRoutes);
+app.use('/api/v1/users',                     userRoutes);
+app.use('/api/v1/files',                     fileRoutes);
+app.use('/api/v1/courses',                   courseRoutes);
 app.use('/api/v1/courses/:courseId/lessons', lessonRoutes);
-app.use('/api/v1/enrollments', enrollmentRoutes);
+app.use('/api/v1/enrollments',               enrollmentRoutes);
+app.use('/api/v1/progress',                  progressRoutes);
 
-// ── 404 handler ───────────────────────────────
+// ── 404 ───────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -78,29 +78,43 @@ app.use((req, res) => {
   });
 });
 
-// ── Global error handler ──────────────────────
+// ── Error handler ─────────────────────────────
 app.use(errorHandler);
 
 // ── Socket.io ─────────────────────────────────
 io.on('connection', (socket) => {
-  console.log(`[Socket] Client connected: ${socket.id}`);
-  socket.on('join_room', (userId) => {
-    socket.join(`user_${userId}`);
-  });
-  socket.on('disconnect', () => {
-    console.log(`[Socket] Client disconnected: ${socket.id}`);
-  });
+  socket.on('join_room', (userId) => socket.join(`user_${userId}`));
+  socket.on('disconnect', () => {});
 });
 
-// ── Start server ──────────────────────────────
-const PORT = env.BACKEND_PORT || 5000;
+// ── Event listeners (Phase 3) ─────────────────
+// lesson.completed → push real-time notification to student
+eventBus.on('lesson.completed', ({ userId, lessonId, courseId }) => {
+  io.to(`user_${userId}`).emit('lesson_completed', { lessonId, courseId });
+});
 
-async function startServer() {
+// course.completed → push celebration notification + trigger certificate worker
+eventBus.on('course.completed', ({ userId, courseId }) => {
+  io.to(`user_${userId}`).emit('course_completed', { courseId });
+  // Certificate worker picks this up via Redis queue (Phase 7)
+  console.log(`[Events] Course completed — user:${userId} course:${courseId}`);
+});
+
+// enrollment.created → seed course_progress row for new student
+eventBus.on('enrollment.created', async ({ userId, courseId }) => {
   try {
-    await redisClient.connectWithRetry();
+    // The DB trigger (init_course_progress) handles this automatically,
+    // but we also cache it in Redis for fast dashboard loads
+    await redisClient.del(`dashboard_${userId}`);
+  } catch (err) {
+    console.error('[EventBus] enrollment.created handler error:', err.message);
+  }
+});
 
-    server.listen(PORT, () => {
-      console.log(`
+// ── Start ─────────────────────────────────────
+const PORT = env.BACKEND_PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`
 ╔══════════════════════════════════════╗
 ║       LMS Backend — Running          ║
 ║  Port    : ${PORT}                       ║
@@ -108,23 +122,13 @@ async function startServer() {
 ║  DB      : ${env.POSTGRES_DB}          ║
 ╚══════════════════════════════════════╝
   `);
-    });
-  } catch (err) {
-    console.error('[Server] Failed to start:', err);
-    process.exit(1);
-  }
-}
-
-startServer();
+});
 
 // ── Graceful shutdown ─────────────────────────
 process.on('SIGTERM', async () => {
-  console.log('[Server] SIGTERM received — shutting down gracefully');
   server.close(async () => {
     await db.end();
-    if (redisClient.isOpen) {
-      await redisClient.quit();
-    }
+    await redisClient.quit();
     process.exit(0);
   });
 });
