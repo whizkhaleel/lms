@@ -31,25 +31,38 @@ async function getEnrollment(userId, courseId) {
   return rows[0];
 }
 
+async function resolveLesson(lessonId, courseId = null) {
+  const query = courseId
+    ? `SELECT id, course_id, duration_seconds
+         FROM lessons
+        WHERE id = $1
+          AND course_id = $2
+          AND is_published = true
+          AND deleted_at IS NULL`
+    : `SELECT id, course_id, duration_seconds
+         FROM lessons
+        WHERE id = $1
+          AND is_published = true
+          AND deleted_at IS NULL`;
+
+  const values = courseId ? [lessonId, courseId] : [lessonId];
+  const { rows } = await db.query(query, values);
+  const lesson = rows[0];
+
+  if (!lesson) throw ApiError.notFound('Lesson not found');
+  return lesson;
+}
+
 // ─────────────────────────────────────────────
 //  HEARTBEAT
 //  Called every ~10 seconds by the video player.
 //  Keeps track of exact watch position and total
 //  seconds actually watched (deduped by range tracking).
 // ─────────────────────────────────────────────
-async function heartbeat({ userId, lessonId, courseId, positionSecs, watchedSecs }) {
-  const enrollment = await getEnrollment(userId, courseId);
+async function heartbeat({ userId, lessonId, courseId = null, positionSecs, watchedSecs }) {
+  const lesson = await resolveLesson(lessonId, courseId);
+  const enrollment = await getEnrollment(userId, lesson.course_id);
 
-  // Load lesson duration for auto-complete check
-  const { rows: lessonRows } = await db.query(
-    `SELECT duration_seconds, is_published FROM lessons
-     WHERE id = $1 AND course_id = $2 AND deleted_at IS NULL`,
-    [lessonId, courseId]
-  );
-  const lesson = lessonRows[0];
-  if (!lesson || !lesson.is_published) throw ApiError.notFound('Lesson not found');
-
-  // Auto-complete trigger: student watched ≥ 80% of the video
   const duration      = lesson.duration_seconds || 0;
   const shouldComplete = duration > 0 && watchedSecs >= duration * 0.8;
 
@@ -62,7 +75,6 @@ async function heartbeat({ userId, lessonId, courseId, positionSecs, watchedSecs
              $7, CASE WHEN $7 THEN NOW() ELSE NULL END)
      ON CONFLICT (user_id, lesson_id) DO UPDATE SET
        watch_position_secs = $5,
-       -- only increase watched_secs, never decrease (deduplication)
        watched_secs        = GREATEST(lesson_progress.watched_secs, $6),
        last_watched_at     = NOW(),
        play_count          = CASE
@@ -70,7 +82,6 @@ async function heartbeat({ userId, lessonId, courseId, positionSecs, watchedSecs
                                THEN lesson_progress.play_count + 1
                                ELSE lesson_progress.play_count
                              END,
-       -- once complete, stays complete
        is_completed        = lesson_progress.is_completed OR $7,
        completed_at        = CASE
                                WHEN lesson_progress.is_completed OR $7
@@ -79,15 +90,14 @@ async function heartbeat({ userId, lessonId, courseId, positionSecs, watchedSecs
                              END,
        first_watched_at    = COALESCE(lesson_progress.first_watched_at, NOW())
      RETURNING *`,
-    [userId, lessonId, courseId, enrollment.id,
+    [userId, lessonId, lesson.course_id, enrollment.id,
      positionSecs, watchedSecs, shouldComplete]
   );
 
   const progress = rows[0];
 
-  // If lesson just became complete, recompute course snapshot
   if (shouldComplete) {
-    await recomputeCourseProgress(userId, courseId, enrollment.id);
+    await recomputeCourseProgress(userId, lesson.course_id, enrollment.id);
   }
 
   return {
@@ -101,14 +111,9 @@ async function heartbeat({ userId, lessonId, courseId, positionSecs, watchedSecs
 // ─────────────────────────────────────────────
 //  MANUAL MARK COMPLETE / INCOMPLETE
 // ─────────────────────────────────────────────
-async function markComplete(userId, lessonId, courseId) {
-  const enrollment = await getEnrollment(userId, courseId);
-
-  const { rows: lessonRows } = await db.query(
-    'SELECT id FROM lessons WHERE id = $1 AND course_id = $2 AND deleted_at IS NULL',
-    [lessonId, courseId]
-  );
-  if (!lessonRows[0]) throw ApiError.notFound('Lesson not found');
+async function markComplete(userId, lessonId, courseId = null) {
+  const lesson = await resolveLesson(lessonId, courseId);
+  const enrollment = await getEnrollment(userId, lesson.course_id);
 
   const { rows } = await db.query(
     `INSERT INTO lesson_progress
@@ -120,31 +125,31 @@ async function markComplete(userId, lessonId, courseId) {
        completed_at = COALESCE(lesson_progress.completed_at, NOW()),
        last_watched_at = NOW()
      RETURNING is_completed, completed_at`,
-    [userId, lessonId, courseId, enrollment.id]
+    [userId, lessonId, lesson.course_id, enrollment.id]
   );
 
-  const courseSnap = await recomputeCourseProgress(userId, courseId, enrollment.id);
+  const courseSnap = await recomputeCourseProgress(userId, lesson.course_id, enrollment.id);
 
-  eventBus.emit('lesson.completed', { userId, lessonId, courseId });
+  eventBus.emit('lesson.completed', { userId, lessonId, courseId: lesson.course_id });
 
   return {
-    lesson:  rows[0],
-    course:  courseSnap,
+    lesson: rows[0],
+    course: courseSnap,
   };
 }
 
-async function markIncomplete(userId, lessonId, courseId) {
-  await getEnrollment(userId, courseId);
+async function markIncomplete(userId, lessonId, courseId = null) {
+  const lesson = await resolveLesson(lessonId, courseId);
+  const enrollment = await getEnrollment(userId, lesson.course_id);
 
   await db.query(
     `UPDATE lesson_progress
      SET is_completed = false, completed_at = NULL
-     WHERE user_id = $1 AND lesson_id = $2`,
-    [userId, lessonId]
+     WHERE user_id = $1 AND lesson_id = $2 AND course_id = $3`,
+    [userId, lessonId, lesson.course_id]
   );
 
-  const enrollment = await getEnrollment(userId, courseId);
-  const courseSnap = await recomputeCourseProgress(userId, courseId, enrollment.id);
+  const courseSnap = await recomputeCourseProgress(userId, lesson.course_id, enrollment.id);
   return { course: courseSnap };
 }
 
@@ -254,8 +259,9 @@ async function recomputeCourseProgress(userId, courseId, enrollmentId) {
 //  Called when student opens a lesson —
 //  returns exactly where they left off.
 // ─────────────────────────────────────────────
-async function getLessonProgress(userId, lessonId, courseId) {
-  await getEnrollment(userId, courseId);
+async function getLessonProgress(userId, lessonId, courseId = null) {
+  const lesson = await resolveLesson(lessonId, courseId);
+  await getEnrollment(userId, lesson.course_id);
 
   const { rows } = await db.query(
     `SELECT watch_position_secs, watched_secs, is_completed,
@@ -265,7 +271,6 @@ async function getLessonProgress(userId, lessonId, courseId) {
     [userId, lessonId]
   );
 
-  // Return zeros if never watched
   return rows[0] || {
     watch_position_secs: 0,
     watched_secs: 0,
@@ -384,8 +389,9 @@ async function getDashboard(userId) {
 // ─────────────────────────────────────────────
 //  VIDEO BOOKMARKS
 // ─────────────────────────────────────────────
-async function addBookmark(userId, lessonId, courseId, positionSecs, label) {
-  await getEnrollment(userId, courseId);
+async function addBookmark(userId, lessonId, positionSecs, label) {
+  const lesson = await resolveLesson(lessonId);
+  await getEnrollment(userId, lesson.course_id);
 
   const { rows } = await db.query(
     `INSERT INTO video_bookmarks (user_id, lesson_id, position_secs, label)
@@ -396,77 +402,67 @@ async function addBookmark(userId, lessonId, courseId, positionSecs, label) {
 }
 
 async function getBookmarks(userId, lessonId) {
+  const lesson = await resolveLesson(lessonId);
+  await getEnrollment(userId, lesson.course_id);
+
   const { rows } = await db.query(
     `SELECT id, position_secs, label, created_at
-     FROM video_bookmarks WHERE user_id = $1 AND lesson_id = $2
+     FROM video_bookmarks
+     WHERE user_id = $1 AND lesson_id = $2
      ORDER BY position_secs`,
     [userId, lessonId]
   );
   return rows;
 }
 
-async function deleteBookmark(userId, bookmarkId) {
+async function deleteBookmark(userId, lessonId, bookmarkId) {
+  const lesson = await resolveLesson(lessonId);
+  await getEnrollment(userId, lesson.course_id);
+
   const { rows } = await db.query(
-    `DELETE FROM video_bookmarks WHERE id = $1 AND user_id = $2 RETURNING id`,
-    [bookmarkId, userId]
+    `DELETE FROM video_bookmarks
+     WHERE id = $1 AND user_id = $2 AND lesson_id = $3
+     RETURNING id`,
+    [bookmarkId, userId, lessonId]
   );
   if (!rows[0]) throw ApiError.notFound('Bookmark not found');
+  return rows[0];
 }
 
 // ─────────────────────────────────────────────
 //  INSTRUCTOR ANALYTICS — course progress view
 // ─────────────────────────────────────────────
 async function getCourseAnalytics(courseId, requestingUser) {
-  // Verify ownership
   const { rows: courseRows } = await db.query(
-    'SELECT id, instructor_id, lesson_count FROM courses WHERE id = $1 AND deleted_at IS NULL',
+    `SELECT id, instructor_id, lesson_count
+     FROM courses
+     WHERE id = $1 AND deleted_at IS NULL`,
     [courseId]
   );
   const course = courseRows[0];
   if (!course) throw ApiError.notFound('Course not found');
   if (requestingUser.role !== 'admin' && course.instructor_id !== requestingUser.id) {
-    throw ApiError.forbidden('Access denied');
+    throw ApiError.forbidden('Unauthorized');
   }
 
-  // Per-lesson completion rates
-  const { rows: lessonStats } = await db.query(
+  const { rows } = await db.query(
     `SELECT
-       l.id, l.title, l.sort_order, l.duration_seconds,
-       s.title AS section_title,
-       COUNT(lp.id)                                         AS total_starts,
-       COUNT(lp.id) FILTER (WHERE lp.is_completed = true)  AS completions,
-       ROUND(AVG(lp.watched_secs))                         AS avg_watched_secs,
-       CASE WHEN COUNT(lp.id) > 0
-            THEN ROUND(COUNT(lp.id) FILTER (WHERE lp.is_completed = true)::numeric
-                 / COUNT(lp.id) * 100)
-            ELSE 0
-       END AS completion_rate_pct
+       l.id,
+       l.title,
+       l.sort_order,
+       COUNT(lp.id) FILTER (WHERE lp.is_completed = true) AS completions,
+       COUNT(lp.id) AS watch_events
      FROM lessons l
-     JOIN sections s ON s.id = l.section_id
      LEFT JOIN lesson_progress lp ON lp.lesson_id = l.id
-     WHERE l.course_id = $1 AND l.deleted_at IS NULL AND l.is_published = true
-     GROUP BY l.id, l.title, l.sort_order, l.duration_seconds, s.title
-     ORDER BY s.sort_order, l.sort_order`,
+     WHERE l.course_id = $1
+       AND l.is_published = true
+       AND l.deleted_at IS NULL
+     GROUP BY l.id, l.title, l.sort_order
+     ORDER BY l.sort_order`,
     [courseId]
   );
 
-  // Course-level summary
-  const { rows: summary } = await db.query(
-    `SELECT
-       COUNT(DISTINCT cp.user_id)                                   AS total_students,
-       COUNT(DISTINCT cp.user_id) FILTER (WHERE cp.is_completed)    AS completed_students,
-       ROUND(AVG(cp.percent_complete))                              AS avg_progress_pct,
-       ROUND(AVG(cp.total_watched_secs) / 3600.0, 1)               AS avg_watched_hours,
-       COUNT(DISTINCT cp.user_id) FILTER (WHERE cp.current_streak_days >= 7) AS students_on_streak
-     FROM course_progress cp WHERE cp.course_id = $1`,
-    [courseId]
-  );
-
-  return {
-    course:   { id: courseId, lessonCount: course.lesson_count },
-    summary:  summary[0],
-    lessons:  lessonStats,
-  };
+  return { course, lessons: rows };
 }
 
 module.exports = {
