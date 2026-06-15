@@ -113,22 +113,34 @@ eventBus.on('enrollment.created', async ({ userId, courseId }) => {
 
 // ── Start ─────────────────────────────────────
 const PORT = env.BACKEND_PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`
+
+(async () => {
+  try {
+    await Promise.all([
+      db.checkConnection(),
+      redisClient.connectWithRetry(),
+    ]);
+  } catch (err) {
+    console.error('[Startup] Failed to connect to services:', err.message);
+    process.exit(1);
+  }
+  server.listen(PORT, () => {
+    console.log(`
 ╔══════════════════════════════════════╗
 ║       LMS Backend — Running          ║
 ║  Port    : ${PORT}                       ║
 ║  Env     : ${env.NODE_ENV}            ║
 ║  DB      : ${env.POSTGRES_DB}          ║
 ╚══════════════════════════════════════╝
-  `);
-});
+    `);
+  });
+})();
 
 // ── Graceful shutdown ─────────────────────────
 process.on('SIGTERM', async () => {
   server.close(async () => {
-    await db.end();
-    await redisClient.quit();
+    try { await db.end(); } catch { /* ignore */ }
+    try { if (redisClient.isOpen) await redisClient.quit(); } catch { /* ignore */ }
     process.exit(0);
   });
 });
