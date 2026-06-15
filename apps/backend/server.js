@@ -15,13 +15,15 @@ const requestLogger = require('./shared/middleware/requestLogger');
 const eventBus      = require('./shared/events/eventBus');
 
 // ── Route imports ─────────────────────────────
-const authRoutes       = require('./modules/auth/auth.routes');
-const userRoutes       = require('./modules/users/users.routes');
-const fileRoutes       = require('./modules/files/files.routes');
-const courseRoutes     = require('./modules/courses/courses.routes');
-const lessonRoutes     = require('./modules/lessons/lessons.routes');
-const enrollmentRoutes = require('./modules/enrollments/enrollments.routes');
-const progressRoutes   = require('./modules/progress/progress.routes');
+const authRoutes        = require('./modules/auth/auth.routes');
+const userRoutes        = require('./modules/users/users.routes');
+const fileRoutes        = require('./modules/files/files.routes');
+const courseRoutes      = require('./modules/courses/courses.routes');
+const lessonRoutes      = require('./modules/lessons/lessons.routes');
+const enrollmentRoutes  = require('./modules/enrollments/enrollments.routes');
+const progressRoutes    = require('./modules/progress/progress.routes');
+const assessmentRoutes  = require('./modules/assessments/assessments.routes');
+const submissionRoutes  = require('./modules/submissions/submissions.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -69,6 +71,8 @@ app.use('/api/v1/courses',                   courseRoutes);
 app.use('/api/v1/courses/:courseId/lessons', lessonRoutes);
 app.use('/api/v1/enrollments',               enrollmentRoutes);
 app.use('/api/v1/progress',                  progressRoutes);
+app.use('/api/v1/assessments',               assessmentRoutes);
+app.use('/api/v1/submissions',               submissionRoutes);
 
 // ── 404 ───────────────────────────────────────
 app.use((req, res) => {
@@ -84,63 +88,54 @@ app.use(errorHandler);
 // ── Socket.io ─────────────────────────────────
 io.on('connection', (socket) => {
   socket.on('join_room', (userId) => socket.join(`user_${userId}`));
-  socket.on('disconnect', () => {});
 });
 
-// ── Event listeners (Phase 3) ─────────────────
-// lesson.completed → push real-time notification to student
+// ── Event listeners ───────────────────────────
+
+// Phase 3 — progress
 eventBus.on('lesson.completed', ({ userId, lessonId, courseId }) => {
   io.to(`user_${userId}`).emit('lesson_completed', { lessonId, courseId });
 });
-
-// course.completed → push celebration notification + trigger certificate worker
 eventBus.on('course.completed', ({ userId, courseId }) => {
   io.to(`user_${userId}`).emit('course_completed', { courseId });
-  // Certificate worker picks this up via Redis queue (Phase 7)
   console.log(`[Events] Course completed — user:${userId} course:${courseId}`);
 });
+eventBus.on('enrollment.created', async ({ userId }) => {
+  try { await redisClient.del(`dashboard_${userId}`); } catch {}
+});
 
-// enrollment.created → seed course_progress row for new student
-eventBus.on('enrollment.created', async ({ userId, courseId }) => {
-  try {
-    // The DB trigger (init_course_progress) handles this automatically,
-    // but we also cache it in Redis for fast dashboard loads
-    await redisClient.del(`dashboard_${userId}`);
-  } catch (err) {
-    console.error('[EventBus] enrollment.created handler error:', err.message);
-  }
+// Phase 4 — assessments
+eventBus.on('quiz.submitted', ({ userId, quizId, courseId, passed, scorePct }) => {
+  io.to(`user_${userId}`).emit('quiz_result', { quizId, courseId, passed, scorePct });
+  console.log(`[Events] Quiz submitted — user:${userId} score:${scorePct}% passed:${passed}`);
+});
+eventBus.on('assignment.submitted', ({ userId, submissionId, courseId }) => {
+  // Notify instructors in the course that a submission is pending review
+  io.to(`course_${courseId}_instructors`).emit('submission_pending', { submissionId, userId });
+  console.log(`[Events] Assignment submitted — user:${userId}`);
+});
+eventBus.on('assignment.graded', ({ userId, submissionId, score, passed }) => {
+  io.to(`user_${userId}`).emit('assignment_graded', { submissionId, score, passed });
+  console.log(`[Events] Assignment graded — user:${userId} score:${score} passed:${passed}`);
 });
 
 // ── Start ─────────────────────────────────────
 const PORT = env.BACKEND_PORT || 5000;
-
-(async () => {
-  try {
-    await Promise.all([
-      db.checkConnection(),
-      redisClient.connectWithRetry(),
-    ]);
-  } catch (err) {
-    console.error('[Startup] Failed to connect to services:', err.message);
-    process.exit(1);
-  }
-  server.listen(PORT, () => {
-    console.log(`
+server.listen(PORT, () => {
+  console.log(`
 ╔══════════════════════════════════════╗
 ║       LMS Backend — Running          ║
 ║  Port    : ${PORT}                       ║
 ║  Env     : ${env.NODE_ENV}            ║
 ║  DB      : ${env.POSTGRES_DB}          ║
 ╚══════════════════════════════════════╝
-    `);
-  });
-})();
+  `);
+});
 
-// ── Graceful shutdown ─────────────────────────
 process.on('SIGTERM', async () => {
   server.close(async () => {
-    try { await db.end(); } catch { /* ignore */ }
-    try { if (redisClient.isOpen) await redisClient.quit(); } catch { /* ignore */ }
+    await db.end();
+    await redisClient.quit();
     process.exit(0);
   });
 });
