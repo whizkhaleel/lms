@@ -24,6 +24,8 @@ const enrollmentRoutes  = require('./modules/enrollments/enrollments.routes');
 const progressRoutes    = require('./modules/progress/progress.routes');
 const assessmentRoutes  = require('./modules/assessments/assessments.routes');
 const submissionRoutes  = require('./modules/submissions/submissions.routes');
+const notificationRoutes = require('./modules/notifications/notifications.routes');
+const forumRoutes        = require('./modules/forums/forums.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -67,6 +69,8 @@ app.use('/api/v1/enrollments',               enrollmentRoutes);
 app.use('/api/v1/progress',                  progressRoutes);
 app.use('/api/v1/assessments',               assessmentRoutes);
 app.use('/api/v1/submissions',               submissionRoutes);
+app.use('/api/v1/notifications',             notificationRoutes);
+app.use('/api/v1/forums',                    forumRoutes);
 
 // ── 404 ───────────────────────────────────────
 app.use((req, res) => {
