@@ -56,11 +56,6 @@ module.exports = {
   MINIO_SECRET_KEY: process.env.MINIO_SECRET_KEY,
   MINIO_BUCKET:     process.env.MINIO_BUCKET    || 'lms-files',
 
-  // Stripe
-  STRIPE_SECRET_KEY:      process.env.STRIPE_SECRET_KEY,
-  STRIPE_WEBHOOK_SECRET:  process.env.STRIPE_WEBHOOK_SECRET,
-  STRIPE_CURRENCY:        process.env.STRIPE_CURRENCY || 'usd',
-
   // Email
   SMTP_HOST:   process.env.SMTP_HOST,
   SMTP_PORT:   parseInt(process.env.SMTP_PORT || '587', 10),

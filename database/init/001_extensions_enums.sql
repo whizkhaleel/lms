@@ -51,12 +51,7 @@ CREATE TYPE submission_status AS ENUM (
   'returned'
 );
 
-CREATE TYPE payment_status AS ENUM (
-  'pending',
-  'completed',
-  'failed',
-  'refunded'
-);
+-- payment_status enum removed — payments handled manually
 
 CREATE TYPE notification_type AS ENUM (
   'enrollment',

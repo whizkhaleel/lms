@@ -34,12 +34,6 @@ const io = new Server(server, {
 });
 app.set('io', io);
 
-// ── Raw body for Stripe webhooks ──────────────
-app.use('/api/v1/enrollments/webhook/stripe',
-  express.raw({ type: 'application/json' }),
-  (req, res, next) => { req.rawBody = req.body; next(); }
-);
-
 // ── Global Middleware ─────────────────────────
 app.use(helmet());
 app.use(cors({ origin: env.APP_URL, credentials: true }));
