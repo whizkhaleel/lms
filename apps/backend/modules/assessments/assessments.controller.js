@@ -2,8 +2,8 @@
 
 const Joi         = require('joi');
 const service     = require('./assessments.service');
-const ApiResponse = require('../../shared/utils/ApiResponse');
-const ApiError    = require('../../shared/utils/ApiError');
+const ApiResponse = require('../../shared/utils/apiResponse');
+const ApiError    = require('../../shared/utils/apiError');
 
 // ── Validation schemas ────────────────────────
 const quizSchema = Joi.object({

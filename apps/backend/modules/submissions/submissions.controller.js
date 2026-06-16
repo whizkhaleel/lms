@@ -2,8 +2,8 @@
 
 const Joi         = require('joi');
 const service     = require('./submissions.service');
-const ApiResponse = require('../../shared/utils/ApiResponse');
-const ApiError    = require('../../shared/utils/ApiError');
+const ApiResponse = require('../../shared/utils/apiResponse');
+const ApiError    = require('../../shared/utils/apiError');
 
 const assignmentSchema = Joi.object({
   lessonId:             Joi.string().uuid().required(),

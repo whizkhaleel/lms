@@ -1,7 +1,7 @@
 'use strict';
 
 const db          = require('../../config/db');
-const ApiError    = require('../../shared/utils/ApiError');
+const ApiError    = require('../../shared/utils/apiError');
 const eventBus    = require('../../shared/events/eventBus');
 const fileService = require('../files/files.service');
 
