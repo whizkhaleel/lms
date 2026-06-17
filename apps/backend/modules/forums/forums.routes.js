@@ -1,7 +1,7 @@
 'use strict';
 
 const express      = require('express');
-const router       = express.Router();
+const router       = express.Router({ mergeParams: true }); // inherits :courseId
 const controller   = require('./forums.controller');
 const authenticate = require('../../shared/middleware/authenticate');
 const authorize    = require('../../shared/middleware/authorize');
@@ -9,25 +9,29 @@ const authorize    = require('../../shared/middleware/authorize');
 router.use(authenticate);
 
 // ── Threads ───────────────────────────────────
-router.get   ('/courses/:courseId/threads',              controller.listThreads);
-router.post  ('/threads',                                 controller.createThread);
-router.get   ('/threads/:threadId',                       controller.getThread);
-router.patch ('/threads/:threadId',                       controller.updateThread);
-router.delete('/threads/:threadId',                       controller.deleteThread);
+router.get   ('/',                                    controller.listThreads);
+router.post  ('/',                                    controller.createThread);
+router.get   ('/:threadId',                           controller.getThread);
+router.patch ('/:threadId',                           controller.updateThread);
+router.delete('/:threadId',                           controller.deleteThread);
 
-// ── Instructor thread actions ──────────────────
-router.patch ('/threads/:threadId/pin',    authorize('instructor','admin'), controller.pinThread);
-router.patch ('/threads/:threadId/lock',   authorize('instructor','admin'), controller.lockThread);
+// Instructor / Admin only — pin, lock, mark answered
+router.patch ('/:threadId/pin',    authorize('instructor','admin'), controller.pinThread);
+router.patch ('/:threadId/lock',   authorize('instructor','admin'), controller.lockThread);
 
-// ── Posts ─────────────────────────────────────
-router.post  ('/threads/:threadId/posts',                controller.createPost);
-router.patch ('/posts/:postId',                          controller.updatePost);
-router.delete('/posts/:postId',                          controller.deletePost);
+// ── Posts (replies inside a thread) ──────────
+router.get   ('/:threadId/posts',                     controller.listPosts);
+router.post  ('/:threadId/posts',                     controller.createPost);
+router.patch ('/:threadId/posts/:postId',             controller.updatePost);
+router.delete('/:threadId/posts/:postId',             controller.deletePost);
 
-// ── Instructor post actions ────────────────────
-router.patch ('/posts/:postId/mark-answer', authorize('instructor','admin'), controller.markAnswer);
+// Mark post as accepted answer (instructor / admin)
+router.patch ('/:threadId/posts/:postId/answer',
+  authorize('instructor','admin'),
+  controller.markAsAnswer
+);
 
-// ── Reactions ──────────────────────────────────
-router.post  ('/posts/:postId/react',                    controller.toggleReaction);
+// ── Reactions ────────────────────────────────
+router.post('/:threadId/posts/:postId/react',         controller.toggleReaction);
 
 module.exports = router;
