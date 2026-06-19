@@ -1,0 +1,117 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { useAuthStore }   from './shared/stores/authStore';
+import { useSocketStore } from './shared/stores/socketStore';
+
+// Layouts & guards
+import AppLayout, { AuthLayout, ClassroomLayout } from './shared/components/layout/AppLayout';
+import { RequireAuth, RequireRole, GuestOnly }     from './app/guards';
+import { PageLoader } from './shared/components/ui/spinner';
+
+// ── Lazy pages ────────────────────────────────
+const LoginPage           = lazy(() => import('./features/auth/pages/LoginPage'));
+const RegisterPage        = lazy(() => import('./features/auth/pages/RegisterPage'));
+const ForgotPasswordPage  = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage   = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const StudentDashboard    = lazy(() => import('./features/dashboard/StudentDashboard'));
+const CourseCatalogPage   = lazy(() => import('./features/courses/pages/CourseCatalogPage'));
+const CourseDetailPage    = lazy(() => import('./features/courses/pages/CourseDetailPage'));
+const ClassroomPage       = lazy(() => import('./features/classroom/pages/ClassroomPage'));
+const MessagesPage        = lazy(() => import('./features/messages/pages/MessagesPage'));
+const InstructorDashboard = lazy(() => import('./features/instructor/pages/InstructorDashboardPage'));
+const AdminDashboard      = lazy(() => import('./features/admin/pages/AdminDashboardPage'));
+
+const Placeholder = ({ title }) => (
+  <div className="flex flex-col items-center justify-center min-h-64 text-gray-500">
+    <p className="text-4xl mb-3">🚧</p>
+    <p className="font-semibold text-white text-lg">{title}</p>
+    <p className="text-sm mt-1">Coming soon in this phase</p>
+  </div>
+);
+
+// Connect Socket.io once the user is known
+function SocketInit() {
+  const user    = useAuthStore(s => s.user);
+  const connect = useSocketStore(s => s.connect);
+  useEffect(() => {
+    if (user?.id) connect(user.id);
+  }, [user?.id, connect]);
+  return null;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <SocketInit />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+
+          {/* ── Auth pages (centered, no sidebar) ── */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login"           element={<GuestOnly><LoginPage /></GuestOnly>} />
+            <Route path="/register"        element={<GuestOnly><RegisterPage /></GuestOnly>} />
+            <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
+            <Route path="/reset-password"  element={<GuestOnly><ResetPasswordPage /></GuestOnly>} />
+          </Route>
+
+          {/* ── Classroom (full width, requires login) ── */}
+          <Route element={<RequireAuth />}>
+            <Route element={<ClassroomLayout />}>
+              <Route path="/learn/:courseId"                   element={<ClassroomPage />} />
+              <Route path="/learn/:courseId/lessons/:lessonId" element={<ClassroomPage />} />
+            </Route>
+          </Route>
+
+          {/* ── Main app shell (navbar + sidebar) ── */}
+          <Route element={<AppLayout />}>
+
+            {/* Public */}
+            <Route index                  element={<Navigate to="/courses" replace />} />
+            <Route path="/courses"        element={<CourseCatalogPage />} />
+            <Route path="/courses/:slug"  element={<CourseDetailPage />} />
+
+            {/* Student — requires login only */}
+            <Route element={<RequireAuth />}>
+              <Route path="/dashboard"     element={<StudentDashboard />} />
+              <Route path="/profile"       element={<Placeholder title="Profile Settings" />} />
+              <Route path="/messages"      element={<MessagesPage />} />
+              <Route path="/notifications" element={<Placeholder title="All Notifications" />} />
+            </Route>
+
+            {/* Instructor — requires login + role */}
+            <Route element={<RequireAuth />}>
+              <Route element={<RequireRole roles={['instructor','admin','super_admin']} />}>
+                <Route path="/instructor"                       element={<InstructorDashboard />} />
+                <Route path="/instructor/courses/new"           element={<Placeholder title="Create Course" />} />
+                <Route path="/instructor/courses/:id/edit"      element={<Placeholder title="Edit Course" />} />
+                <Route path="/instructor/courses/:id/analytics" element={<Placeholder title="Course Analytics" />} />
+                <Route path="/instructor/submissions"           element={<Placeholder title="Submissions" />} />
+                <Route path="/instructor/analytics"             element={<Placeholder title="Analytics" />} />
+              </Route>
+            </Route>
+
+            {/* Admin — requires login + role */}
+            <Route element={<RequireAuth />}>
+              <Route element={<RequireRole roles={['admin','super_admin']} />}>
+                <Route path="/admin"             element={<AdminDashboard />} />
+                <Route path="/admin/users"       element={<Placeholder title="User Management" />} />
+                <Route path="/admin/courses"     element={<Placeholder title="Course Management" />} />
+                <Route path="/admin/enrollments" element={<Placeholder title="Enrollment Management" />} />
+                <Route path="/admin/payments"    element={<Placeholder title="Payment Records" />} />
+                <Route path="/admin/analytics"   element={<Placeholder title="Analytics" />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={
+              <div className="text-center py-32">
+                <p className="text-7xl font-display font-black text-gray-800 mb-4">404</p>
+                <p className="text-gray-400 text-lg">Page not found</p>
+              </div>
+            } />
+          </Route>
+
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}

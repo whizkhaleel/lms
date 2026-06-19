@@ -7,10 +7,12 @@ const ApiError    = require('../../shared/utils/apiError');
 
 // Validation schemas
 
+const emailRule = Joi.string().email({ tlds: { allow: false } }).lowercase().required();
+
 const registerSchema = Joi.object({
   firstName: Joi.string().trim().min(2).max(100).required(),
   lastName:  Joi.string().trim().min(2).max(100).required(),
-  email:     Joi.string().email().lowercase().required(),
+  email:     emailRule,
   password:  Joi.string()
     .min(8)
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
@@ -21,7 +23,7 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  email:    Joi.string().email().lowercase().required(),
+  email:    emailRule,
   password: Joi.string().required(),
 });
 

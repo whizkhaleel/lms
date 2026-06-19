@@ -17,6 +17,10 @@ export default defineConfig({
         target: 'http://backend:5000',
         changeOrigin: true,
       },
+      '/lmsdata': {
+        target: 'http://nginx:80',
+        changeOrigin: true,
+      },
     },
   },
 });

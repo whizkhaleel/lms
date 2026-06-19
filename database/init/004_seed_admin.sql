@@ -17,7 +17,7 @@ INSERT INTO users (
   gen_random_uuid(),
   'admin@lms.local',
   -- bcrypt hash of 'Admin@12345' with 12 rounds
-  '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQyCgNPGVwQdMFUb.Vs8fxeHG',
+  '$2a$12$RICbTtGYVBgqHDy1OPuz9OY.HNHVeL0ZN/DDZS9q7s84nHIb8XnVi',
   'System',
   'Admin',
   'admin',
