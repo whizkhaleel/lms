@@ -15,7 +15,7 @@ const STATUS_BADGE = {
 export default function InstructorDashboardPage() {
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ['instructor-courses'],
-    queryFn:  () => api.get('/courses?instructorOnly=true').then(r => r.data.data || []),
+    queryFn:  () => api.get('/courses/my-courses').then(r => r.data.data || []),
   });
 
   const totalStudents = courses.reduce((s, c) => s + (c.student_count || 0), 0);

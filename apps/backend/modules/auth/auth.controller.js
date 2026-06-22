@@ -5,14 +5,12 @@ const service     = require('./auth.service');
 const ApiResponse = require('../../shared/utils/apiResponse');
 const ApiError    = require('../../shared/utils/apiError');
 
-// Validation schemas
-
-const emailRule = Joi.string().email({ tlds: { allow: false } }).lowercase().required();
+// ── Validation schemas ────────────────────────
 
 const registerSchema = Joi.object({
   firstName: Joi.string().trim().min(2).max(100).required(),
   lastName:  Joi.string().trim().min(2).max(100).required(),
-  email:     emailRule,
+  email:     Joi.string().email({ tlds: { allow: false } }).lowercase().required(),
   password:  Joi.string()
     .min(8)
     .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
@@ -23,7 +21,7 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-  email:    emailRule,
+  email:    Joi.string().email({ tlds: { allow: false } }).lowercase().required(),
   password: Joi.string().required(),
 });
 
@@ -35,7 +33,7 @@ const resetPasswordSchema = Joi.object({
     .required(),
 });
 
-// Controllers
+// ── Controllers ───────────────────────────────
 
 async function register(req, res, next) {
   try {
@@ -60,8 +58,8 @@ async function login(req, res, next) {
 
     const result = await service.login({
       ...value,
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.ip,
+      userAgent:  req.headers['user-agent'],
+      ipAddress:  req.ip,
     });
 
     ApiResponse.success(res, result, 'Login successful');
@@ -96,7 +94,7 @@ async function me(req, res, next) {
   try {
     const { rows } = await require('../../config/db').query(
       `SELECT id, email, first_name, last_name, role, status,
-              bio, headline, avatar_file_id, created_at
+              bio, headline, avatar_file_id, must_change_password, created_at
        FROM users WHERE id = $1 AND deleted_at IS NULL`,
       [req.user.id]
     );
@@ -126,7 +124,7 @@ async function forgotPassword(req, res, next) {
     if (!email) throw ApiError.badRequest('Email is required');
 
     await service.forgotPassword(email);
-    // Always return same message - don't reveal if email exists
+    // Always return same message — don't reveal if email exists
     ApiResponse.success(res, {}, 'If that email exists, a reset link has been sent.');
   } catch (err) {
     next(err);

@@ -21,7 +21,7 @@ export default function AdminDashboardPage() {
   });
   const { data: paymentsData } = useQuery({
     queryKey: ['admin-payments-pending'],
-    queryFn:  () => api.get('/enrollments/payments?status=pending&limit=5').then(r => r.data),
+    queryFn:  () => api.get('/enrollments/payments/gateway?status=pending&limit=5').then(r => r.data),
   });
 
   const stats = [
@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
                   <Clock size={14} className="text-amber-400 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">
-                      {p.first_name} {p.last_name}
+                      {p.buyer_first_name} {p.buyer_last_name}
                     </p>
                     <p className="text-xs text-gray-500 truncate">{p.course_title}</p>
                   </div>
@@ -85,10 +85,10 @@ export default function AdminDashboardPage() {
                       {p.currency} {parseFloat(p.amount).toLocaleString()}
                     </p>
                     <Link
-                      to={`/admin/payments`}
+                      to="/admin/payments"
                       className="text-xs text-[#3B9EE8] hover:underline"
                     >
-                      Confirm
+                      Review
                     </Link>
                   </div>
                 </div>

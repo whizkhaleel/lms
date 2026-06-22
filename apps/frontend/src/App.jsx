@@ -10,9 +10,9 @@ import { PageLoader } from './shared/components/ui/spinner';
 
 // ── Lazy pages ────────────────────────────────
 const LoginPage           = lazy(() => import('./features/auth/pages/LoginPage'));
-const RegisterPage        = lazy(() => import('./features/auth/pages/RegisterPage'));
 const ForgotPasswordPage  = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage   = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
+const ChangePasswordPage  = lazy(() => import('./features/auth/pages/ChangePasswordPage'));
 const StudentDashboard    = lazy(() => import('./features/dashboard/StudentDashboard'));
 const CourseCatalogPage   = lazy(() => import('./features/courses/pages/CourseCatalogPage'));
 const CourseDetailPage    = lazy(() => import('./features/courses/pages/CourseDetailPage'));
@@ -20,6 +20,7 @@ const ClassroomPage       = lazy(() => import('./features/classroom/pages/Classr
 const MessagesPage        = lazy(() => import('./features/messages/pages/MessagesPage'));
 const InstructorDashboard = lazy(() => import('./features/instructor/pages/InstructorDashboardPage'));
 const AdminDashboard      = lazy(() => import('./features/admin/pages/AdminDashboardPage'));
+const PaymentGatewayPage  = lazy(() => import('./features/admin/pages/PaymentGatewayPage'));
 
 const Placeholder = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-64 text-gray-500">
@@ -49,9 +50,13 @@ export default function App() {
           {/* ── Auth pages (centered, no sidebar) ── */}
           <Route element={<AuthLayout />}>
             <Route path="/login"           element={<GuestOnly><LoginPage /></GuestOnly>} />
-            <Route path="/register"        element={<GuestOnly><RegisterPage /></GuestOnly>} />
             <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
             <Route path="/reset-password"  element={<GuestOnly><ResetPasswordPage /></GuestOnly>} />
+          </Route>
+
+          {/* ── Forced/voluntary password change (logged in, centered) ── */}
+          <Route element={<RequireAuth><AuthLayout /></RequireAuth>}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
           </Route>
 
           {/* ── Classroom (full width, requires login) ── */}
@@ -97,7 +102,7 @@ export default function App() {
                 <Route path="/admin/users"       element={<Placeholder title="User Management" />} />
                 <Route path="/admin/courses"     element={<Placeholder title="Course Management" />} />
                 <Route path="/admin/enrollments" element={<Placeholder title="Enrollment Management" />} />
-                <Route path="/admin/payments"    element={<Placeholder title="Payment Records" />} />
+                <Route path="/admin/payments"    element={<PaymentGatewayPage />} />
                 <Route path="/admin/analytics"   element={<Placeholder title="Analytics" />} />
               </Route>
             </Route>

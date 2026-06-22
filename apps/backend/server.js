@@ -27,9 +27,13 @@ const submissionRoutes  = require('./modules/submissions/submissions.routes');
 const forumRoutes       = require('./modules/forums/forums.routes');
 const messageRoutes     = require('./modules/messages/messages.routes');
 const notificationRoutes = require('./modules/notifications/notifications.routes');
+const paymentWebhookRoutes = require('./modules/enrollments/payment-webhook.routes');
 
 const app    = express();
 const server = http.createServer(app);
+
+// Trust the nginx reverse proxy (needed for rate-limiter IP detection)
+app.set('trust proxy', 1);
 
 // ── Socket.io ─────────────────────────────────
 const io = new Server(server, {
@@ -39,6 +43,11 @@ const io = new Server(server, {
   pingTimeout:  10000,
 });
 app.set('io', io);
+
+// ── Raw body for payment gateway webhook signature verification ──
+// Must be registered BEFORE express.json() — this route needs the
+// untouched raw bytes to verify the HMAC signature.
+app.use('/api/v1/payments/webhook', express.raw({ type: '*/*', limit: '2mb' }));
 
 // ── Global Middleware ─────────────────────────
 app.use(helmet());
@@ -76,6 +85,7 @@ app.use('/api/v1/assessments',                 assessmentRoutes);
 app.use('/api/v1/submissions',                 submissionRoutes);
 app.use('/api/v1/messages',                    messageRoutes);        // ← Phase 6
 app.use('/api/v1/notifications',               notificationRoutes);   // ← Phase 6
+app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← External payment gateway
 
 // ── 404 ───────────────────────────────────────
 app.use((req, res) => {
@@ -225,31 +235,60 @@ eventBus.on('enrollment.revoked', async ({ userId, courseId }) => {
   }
 });
 
-// ── Start server ──────────────────────────────
+// ── Auth emails (verification + password reset) ──
+const { sendMail } = require('./shared/mailer/mailer');
+const { verifyEmailEmail, passwordResetEmail } = require('./shared/mailer/templates');
+
+eventBus.on('user.registered', async ({ email, firstName, verificationToken }) => {
+  try {
+    const verificationUrl = `${env.APP_URL}/verify-email?token=${verificationToken}`;
+    await sendMail({
+      to:      email,
+      subject: 'Verify your email address',
+      html:    verifyEmailEmail({ firstName, verificationUrl }),
+    });
+  } catch (err) {
+    console.error('[Events] user.registered email error:', err.message);
+  }
+});
+
+eventBus.on('user.forgot_password', async ({ email, firstName, resetToken }) => {
+  try {
+    const resetUrl = `${env.APP_URL}/reset-password?token=${resetToken}`;
+    await sendMail({
+      to:      email,
+      subject: 'Reset your password',
+      html:    passwordResetEmail({ firstName, resetUrl }),
+    });
+  } catch (err) {
+    console.error('[Events] user.forgot_password email error:', err.message);
+  }
+});
+
+// ── Connect DB and Redis before accepting traffic ────
 (async () => {
   try {
-    await redisClient.connectWithRetry();
-  } catch (err) {
-    console.error('[Server] Redis connection failed — starting in degraded mode');
-  }
-
-  try {
     await db.checkConnection();
-  } catch (err) {
-    console.error('[Server] DB connection failed — starting in degraded mode');
-  }
+    await redisClient.connectWithRetry();
 
-  const PORT = env.BACKEND_PORT || 5000;
-  server.listen(PORT, () => {
-    console.log(`
+    const { verifyConnection } = require('./shared/mailer/mailer');
+    verifyConnection(); // non-fatal — logs a warning if SMTP isn't reachable
+
+    const PORT = env.BACKEND_PORT || 5000;
+    server.listen(PORT, () => {
+      console.log(`
 ╔══════════════════════════════════════╗
 ║       LMS Backend — Running          ║
 ║  Port    : ${PORT}                       ║
 ║  Env     : ${env.NODE_ENV}            ║
 ║  DB      : ${env.POSTGRES_DB}          ║
 ╚══════════════════════════════════════╝
-    `);
-  });
+      `);
+    });
+  } catch (err) {
+    console.error('[Server] Startup failed:', err.message);
+    process.exit(1);
+  }
 })();
 
 // ── Graceful shutdown ─────────────────────────

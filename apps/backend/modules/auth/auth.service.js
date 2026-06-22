@@ -1,17 +1,17 @@
 'use strict';
 
-const bcrypt = require('bcryptjs');
-const jwt    = require('jsonwebtoken');
-const crypto = require('crypto');
+const bcrypt   = require('bcryptjs');
+const jwt      = require('jsonwebtoken');
+const crypto   = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 
-const db       = require('../../config/db');
-const redis    = require('../../config/redis');
-const env      = require('../../config/env');
-const ApiError = require('../../shared/utils/apiError');
-const eventBus = require('../../shared/events/eventBus');
+const db        = require('../../config/db');
+const redis     = require('../../config/redis');
+const env       = require('../../config/env');
+const ApiError  = require('../../shared/utils/apiError');
+const eventBus  = require('../../shared/events/eventBus');
 
-// Token helpers
+// ── Token helpers ────────────────────────────
 
 function signAccessToken(payload) {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
@@ -29,7 +29,7 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// Register
+// ── Register ─────────────────────────────────
 
 async function register({ firstName, lastName, email, password }) {
   // 1. Check if email already exists
@@ -74,7 +74,7 @@ async function register({ firstName, lastName, email, password }) {
     return { ...newUser, verificationToken: token };
   });
 
-  // 4. Emit event - email worker will send the verification email
+  // 4. Emit event — email worker will send the verification email
   eventBus.emit('user.registered', {
     userId:            user.id,
     email:             user.email,
@@ -92,13 +92,13 @@ async function register({ firstName, lastName, email, password }) {
   };
 }
 
-// Login
+// ── Login ────────────────────────────────────
 
 async function login({ email, password, userAgent, ipAddress }) {
   // 1. Find user
   const { rows } = await db.query(
     `SELECT id, email, password_hash, first_name, last_name,
-            role, status, email_verified_at
+            role, status, email_verified_at, must_change_password
      FROM users
      WHERE email = $1 AND deleted_at IS NULL`,
     [email.toLowerCase()]
@@ -106,7 +106,7 @@ async function login({ email, password, userAgent, ipAddress }) {
 
   const user = rows[0];
 
-  // Use consistent error - don't reveal if email exists
+  // Use consistent error — don't reveal if email exists
   if (!user) {
     throw ApiError.unauthorized('Invalid email or password');
   }
@@ -147,7 +147,7 @@ async function login({ email, password, userAgent, ipAddress }) {
       [user.id, tokenHash, userAgent, ipAddress, expiresAt]
     );
     await client.query(
-      'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+      `UPDATE users SET last_login_at = NOW() WHERE id = $1`,
       [user.id]
     );
     await client.query(
@@ -160,6 +160,7 @@ async function login({ email, password, userAgent, ipAddress }) {
   return {
     accessToken,
     refreshToken,
+    mustChangePassword: user.must_change_password,
     user: {
       id:        user.id,
       email:     user.email,
@@ -170,7 +171,7 @@ async function login({ email, password, userAgent, ipAddress }) {
   };
 }
 
-// Refresh access token
+// ── Refresh access token ──────────────────────
 
 async function refresh(incomingRefreshToken) {
   let decoded;
@@ -223,7 +224,7 @@ async function refresh(incomingRefreshToken) {
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 }
 
-// Logout
+// ── Logout ────────────────────────────────────
 
 async function logout(userId, accessToken, refreshToken) {
   // Blacklist access token in Redis until it naturally expires
@@ -251,7 +252,7 @@ async function logout(userId, accessToken, refreshToken) {
   );
 }
 
-// Verify Email
+// ── Verify Email ──────────────────────────────
 
 async function verifyEmail(token) {
   const { rows } = await db.query(
@@ -272,7 +273,7 @@ async function verifyEmail(token) {
       [record.user_id]
     );
     await client.query(
-      'UPDATE email_verification_tokens SET used_at = NOW() WHERE id = $1',
+      `UPDATE email_verification_tokens SET used_at = NOW() WHERE id = $1`,
       [record.id]
     );
   });
@@ -280,7 +281,7 @@ async function verifyEmail(token) {
   eventBus.emit('user.email_verified', { userId: record.user_id });
 }
 
-// Forgot Password
+// ── Forgot Password ───────────────────────────
 
 async function forgotPassword(email) {
   const { rows } = await db.query(
@@ -288,31 +289,31 @@ async function forgotPassword(email) {
     [email.toLowerCase()]
   );
 
-  // Always respond the same way - don't reveal if email exists
+  // Always respond the same way — don't reveal if email exists
   if (!rows[0]) return;
 
-  const user      = rows[0];
-  const token     = uuidv4();
+  const user     = rows[0];
+  const token    = uuidv4();
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
 
   await db.query(
-    'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)',
+    `INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES ($1, $2, $3)`,
     [user.id, token, expiresAt]
   );
 
   eventBus.emit('user.forgot_password', {
-    userId:     user.id,
+    userId:    user.id,
     email,
-    firstName:  user.first_name,
+    firstName: user.first_name,
     resetToken: token,
   });
 }
 
-// Reset Password
+// ── Reset Password ────────────────────────────
 
 async function resetPassword(token, newPassword) {
   const { rows } = await db.query(
-    'SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1',
+    `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1`,
     [token]
   );
 
@@ -325,16 +326,16 @@ async function resetPassword(token, newPassword) {
 
   await db.transaction(async (client) => {
     await client.query(
-      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+      `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
       [passwordHash, record.user_id]
     );
     await client.query(
-      'UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1',
+      `UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1`,
       [record.id]
     );
     // Revoke all refresh tokens (force re-login everywhere)
     await client.query(
-      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
+      `UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`,
       [record.user_id]
     );
   });

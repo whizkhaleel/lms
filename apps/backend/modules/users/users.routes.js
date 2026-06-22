@@ -15,6 +15,7 @@ router.patch('/profile',  controller.updateProfile);
 router.patch('/password', controller.changePassword);
 
 // Admin routes
+router.post  ('/',           authorize('admin', 'super_admin'), controller.createUser);
 router.get   ('/',           authorize('admin', 'super_admin'), controller.listUsers);
 router.get   ('/:id',        authorize('admin', 'super_admin'), controller.getUser);
 router.patch ('/:id/role',   authorize('admin', 'super_admin'), controller.updateRole);

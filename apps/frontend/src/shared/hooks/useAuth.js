@@ -14,10 +14,17 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: ({ data }) => {
-      const { user, accessToken, refreshToken } = data.data;
+      const { user, accessToken, refreshToken, mustChangePassword } = data.data;
       setAuth(user, accessToken, refreshToken);
       connect(user.id);
-      toast.success(`Welcome back, ${user.first_name}!`);
+
+      if (mustChangePassword) {
+        toast.success(`Welcome, ${user.firstName || user.first_name}! Please set a new password.`);
+        navigate('/change-password', { state: { forced: true } });
+        return;
+      }
+
+      toast.success(`Welcome back, ${user.firstName || user.first_name}!`);
       // Role-based redirect
       if (['admin','super_admin'].includes(user.role)) navigate('/admin');
       else if (user.role === 'instructor') navigate('/instructor');
@@ -52,9 +59,7 @@ export function useAuth() {
     isAdmin:         isAdmin(),
     isInstructor:    isInstructor(),
     login:    loginMutation.mutate,
-    register: registerMutation.mutate,
     logout:   logoutMutation.mutate,
     loginLoading:    loginMutation.isPending,
-    registerLoading: registerMutation.isPending,
   };
 }

@@ -26,6 +26,8 @@ apiClient.interceptors.response.use(
   (r) => r,
   async (err) => {
     const orig = err.config;
+    // Don't try to auto-refresh on the login endpoint itself
+    if (orig.url?.includes('/auth/login')) return Promise.reject(err);
     if (err.response?.status === 401 && !orig._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => queue.push({ resolve, reject }))

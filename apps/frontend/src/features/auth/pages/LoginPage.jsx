@@ -52,10 +52,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-sm text-gray-400 mt-5">
-          Don't have an account?{' '}
-          <Link to="/register" className="text-[#3B9EE8] hover:underline font-medium">
-            Create one
-          </Link>
+          Accounts are created by the administrator. Contact support if you need access.
         </p>
       </div>
     </div>

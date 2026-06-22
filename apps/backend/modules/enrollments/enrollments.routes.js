@@ -26,4 +26,9 @@ router.post  ('/payments',                      authorize('admin'), controller.r
 router.patch ('/payments/:paymentId/confirm',   authorize('admin'), controller.confirmPayment);
 router.patch ('/payments/:paymentId/reject',    authorize('admin'), controller.rejectPayment);
 
+// ── Admin — external payment gateway ─────────
+router.get   ('/payments/gateway',                       authorize('admin'), controller.listGatewayPayments);
+router.patch ('/payments/gateway/:paymentId/approve',    authorize('admin'), controller.approveGatewayPayment);
+router.patch ('/payments/gateway/:paymentId/reject',     authorize('admin'), controller.rejectGatewayPayment);
+
 module.exports = router;

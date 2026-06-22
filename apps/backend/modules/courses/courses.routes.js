@@ -18,7 +18,17 @@ const upload = multer({
 // ── Public routes (no auth needed) ───────────
 router.get('/',           controller.listCourses);
 router.get('/categories', controller.listCategories);
-router.get('/:slug',      controller.getCourse);
+
+// Instructor — "my courses" list. Must be registered BEFORE the
+// public /:slug route below, otherwise Express matches "my-courses"
+// as a slug and this route is never reached.
+router.get('/my-courses',
+  authenticate,
+  authorize('instructor', 'admin'),
+  controller.getMyCourses
+);
+
+router.get('/:slug', controller.getCourse);
 
 // ── Protected routes ─────────────────────────
 router.use(authenticate);

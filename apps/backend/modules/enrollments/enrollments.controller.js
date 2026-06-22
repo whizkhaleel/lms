@@ -100,8 +100,49 @@ async function listPayments(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── External payment gateway webhook ──────────
+// req.body here is a raw Buffer (see server.js raw-body middleware)
+async function paymentWebhook(req, res, next) {
+  try {
+    const signature = req.headers['x-webhook-signature'];
+    const result = await service.receiveWebhook(req.body, signature);
+    // Always 200 on successful receipt so the payment site doesn't retry forever
+    res.status(200).json({ success: true, duplicate: result.duplicate });
+  } catch (err) { next(err); }
+}
+
+async function listGatewayPayments(req, res, next) {
+  try {
+    const { limit, offset, pagination } = paginate(req.query);
+    const result = await service.listGatewayPayments({
+      page: req.query.page, limit, status: req.query.status,
+    });
+    ApiResponse.paginated(res, result.payments, pagination(result.total));
+  } catch (err) { next(err); }
+}
+
+async function approveGatewayPayment(req, res, next) {
+  try {
+    const result = await service.approveGatewayPayment(req.params.paymentId, req.user.id);
+    ApiResponse.success(res, result,
+      result.isNewAccount
+        ? 'Account created, student enrolled, and login details emailed'
+        : 'Student enrolled and notified by email'
+    );
+  } catch (err) { next(err); }
+}
+
+async function rejectGatewayPayment(req, res, next) {
+  try {
+    const { reason } = req.body;
+    const payment = await service.rejectGatewayPayment(req.params.paymentId, req.user.id, reason);
+    ApiResponse.success(res, { payment }, 'Payment rejected and buyer notified');
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   enroll, myEnrollments, listEnrollments,
   manualEnroll, courseEnrollments, revokeEnrollment,
   recordPayment, confirmPayment, rejectPayment, listPayments,
+  paymentWebhook, listGatewayPayments, approveGatewayPayment, rejectGatewayPayment,
 };

@@ -11,6 +11,7 @@ const required = [
   'POSTGRES_USER', 'POSTGRES_PASSWORD',
   'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD',
   'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET',
+  'PAYMENT_WEBHOOK_SECRET',
 ];
 
 const missing = required.filter((key) => !process.env[key]);
@@ -63,6 +64,9 @@ module.exports = {
   SMTP_USER:   process.env.SMTP_USER,
   SMTP_PASS:   process.env.SMTP_PASS,
   EMAIL_FROM:  process.env.EMAIL_FROM,
+
+  // External Payment Gateway
+  PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET,
 
   // Security
   BCRYPT_SALT_ROUNDS:      parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),

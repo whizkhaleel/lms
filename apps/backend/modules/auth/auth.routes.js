@@ -6,8 +6,7 @@ const controller   = require('./auth.controller');
 const authenticate = require('../../shared/middleware/authenticate');
 const { authLimiter } = require('../../shared/middleware/rateLimiter');
 
-// Public routes
-router.post('/register',        authLimiter, controller.register);
+// Public routes — registration is now admin-only via POST /api/v1/users
 router.post('/login',           authLimiter, controller.login);
 router.post('/refresh',         authLimiter, controller.refresh);
 router.get ('/verify-email',                 controller.verifyEmail);
