@@ -55,7 +55,7 @@ async function createThread(req, res, next) {
       const name = rows[0] ? `${rows[0].first_name} ${rows[0].last_name}` : 'A student';
       await notify(io, {
         userId: thread._notifyInstructorId,
-        type:   'forum_reply',
+        type:   'forum_thread_created',
         title:  'New forum thread in your course',
         body:   `${name} started: "${thread.title}"`,
         data:   { threadId: thread.id, courseId: req.params.courseId },
@@ -69,7 +69,7 @@ async function createThread(req, res, next) {
 async function updateThread(req, res, next) {
   try {
     const thread = await service.updateThread(
-      req.params.threadId, req.user.id, req.user.role, req.body
+      req.params.threadId, req.user.id, req.user.role, req.params.courseId, req.body
     );
     ApiResponse.success(res, { thread }, 'Thread updated');
   } catch (err) { next(err); }
@@ -85,7 +85,7 @@ async function deleteThread(req, res, next) {
 async function pinThread(req, res, next) {
   try {
     const thread = await service.updateThread(
-      req.params.threadId, req.user.id, req.user.role,
+      req.params.threadId, req.user.id, req.user.role, req.params.courseId,
       { isPinned: req.body.pinned ?? true }
     );
     ApiResponse.success(res, { thread }, `Thread ${thread.is_pinned ? 'pinned' : 'unpinned'}`);
@@ -95,7 +95,7 @@ async function pinThread(req, res, next) {
 async function lockThread(req, res, next) {
   try {
     const thread = await service.updateThread(
-      req.params.threadId, req.user.id, req.user.role,
+      req.params.threadId, req.user.id, req.user.role, req.params.courseId,
       { isLocked: req.body.locked ?? true }
     );
     ApiResponse.success(res, { thread }, `Thread ${thread.is_locked ? 'locked' : 'unlocked'}`);
@@ -158,7 +158,7 @@ async function toggleReaction(req, res, next) {
   try {
     const { emoji } = req.body;
     if (!emoji) throw ApiError.badRequest('emoji is required');
-    const result = await service.toggleReaction(req.params.postId, req.user.id, emoji);
+    const result = await service.toggleReaction(req.params.postId, req.user.id, emoji, req.user.role);
     ApiResponse.success(res, result);
   } catch (err) { next(err); }
 }

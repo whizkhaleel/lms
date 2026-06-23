@@ -38,7 +38,7 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = useAuthStore.getState().refreshToken;
         if (!refreshToken) throw new Error('No refresh token');
-        const res = await axios.post('/api/v1/auth/refresh', { refreshToken });
+        const res = await axios.post(`${import.meta.env.VITE_API_URL || '/api/v1'}/auth/refresh`, { refreshToken });
         const { accessToken, refreshToken: newRefresh } = res.data.data;
         useAuthStore.getState().setTokens(accessToken, newRefresh);
         processQueue(null, accessToken);

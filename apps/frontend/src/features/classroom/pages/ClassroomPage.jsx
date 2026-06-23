@@ -33,7 +33,7 @@ export default function ClassroomPage() {
   // Quiz data if lesson type = quiz
   const { data: quizData } = useQuery({
     queryKey: ['quiz-for-lesson', activeLessonId],
-    queryFn:  () => api.get(`/assessments/quizzes?lessonId=${activeLessonId}`).then(r => r.data.data),
+    queryFn:  () => api.get(`/assessments/quizzes/by-lesson/${activeLessonId}`).then(r => r.data.data),
     enabled:  lessonData?.type === 'quiz',
   });
 

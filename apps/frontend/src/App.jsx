@@ -40,9 +40,11 @@ const Placeholder = ({ title }) => (
 function SocketInit() {
   const user    = useAuthStore(s => s.user);
   const connect = useSocketStore(s => s.connect);
+  const disconnect = useSocketStore(s => s.disconnect);
   useEffect(() => {
     if (user?.id) connect(user.id);
-  }, [user?.id, connect]);
+    else disconnect();
+  }, [user?.id, connect, disconnect]);
   return null;
 }
 

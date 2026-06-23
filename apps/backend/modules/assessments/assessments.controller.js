@@ -98,6 +98,14 @@ async function deleteQuestion(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ── Student: get quiz by lesson ──────────────
+async function getQuizByLesson(req, res, next) {
+  try {
+    const result = await service.getQuizByLesson(req.params.lessonId, req.user.id);
+    ApiResponse.success(res, result);
+  } catch (err) { next(err); }
+}
+
 // ── Student Attempt Flow ──────────────────────
 async function startAttempt(req, res, next) {
   try {
@@ -143,6 +151,7 @@ async function gradeShortAnswer(req, res, next) {
 module.exports = {
   createQuiz, updateQuiz, getQuizForInstructor, getQuizAnalytics,
   addQuestion, updateQuestion, deleteQuestion,
+  getQuizByLesson,
   startAttempt, submitAttempt, getAttemptResult, getMyAttempts,
   gradeShortAnswer,
 };

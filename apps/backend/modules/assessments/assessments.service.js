@@ -5,6 +5,74 @@ const ApiError = require('../../shared/utils/apiError');
 const eventBus = require('../../shared/events/eventBus');
 
 // ─────────────────────────────────────────────
+//  QUIZ BY LESSON (Student-facing)
+// ─────────────────────────────────────────────
+
+async function getQuizByLesson(lessonId, userId) {
+  const { rows: lRows } = await db.query(
+    `SELECT id, course_id FROM lessons WHERE id = $1 AND deleted_at IS NULL AND type = 'quiz'`,
+    [lessonId]
+  );
+  if (!lRows[0]) throw ApiError.notFound('Quiz lesson not found');
+
+  await verifyEnrolled(userId, lRows[0].course_id);
+
+  const { rows: qRows } = await db.query(
+    `SELECT q.* FROM quizzes q
+     WHERE q.lesson_id = $1 AND q.is_published = true
+     ORDER BY q.created_at DESC LIMIT 1`,
+    [lessonId]
+  );
+  if (!qRows[0]) throw ApiError.notFound('No published quiz found for this lesson');
+
+  const quiz = qRows[0];
+
+  const { rows: questions } = await db.query(
+    'SELECT id, type, question_text, options, points, sort_order FROM quiz_questions WHERE quiz_id = $1 ORDER BY sort_order',
+    [quiz.id]
+  );
+
+  const questionsForStudent = questions.map(q => ({
+    id:           q.id,
+    type:         q.type,
+    questionText: q.question_text,
+    points:       q.points,
+    options:      q.options.map(o => ({ id: o.id, text: o.text })),
+  }));
+
+  const { rows: activeRows } = await db.query(
+    `SELECT id, attempt_number, started_at FROM quiz_attempts
+     WHERE quiz_id = $1 AND user_id = $2 AND status = 'in_progress'
+     LIMIT 1`,
+    [quiz.id, userId]
+  );
+
+  const { rows: countRows } = await db.query(
+    `SELECT COUNT(*) AS count FROM quiz_attempts
+     WHERE quiz_id = $1 AND user_id = $2 AND status != 'in_progress'`,
+    [quiz.id, userId]
+  );
+  const usedAttempts = parseInt(countRows[0].count, 10);
+
+  return {
+    quiz: {
+      id: quiz.id,
+      lessonId: quiz.lesson_id,
+      title: quiz.title,
+      description: quiz.description,
+      maxAttempts: quiz.max_attempts,
+      timeLimitMins: quiz.time_limit_mins,
+      passingScorePct: quiz.passing_score_pct,
+      shuffleQuestions: quiz.shuffle_questions,
+      shuffleOptions: quiz.shuffle_options,
+    },
+    questions: questionsForStudent,
+    activeAttempt: activeRows[0] || null,
+    usedAttempts,
+  };
+}
+
+// ─────────────────────────────────────────────
 //  QUIZ ENGINE
 // ─────────────────────────────────────────────
 
@@ -624,6 +692,7 @@ async function getQuizAnalytics(quizId, requestingUser) {
 module.exports = {
   createQuiz, updateQuiz, getQuizForInstructor,
   addQuestion, updateQuestion, deleteQuestion,
+  getQuizByLesson,
   startAttempt, submitAttempt, getAttemptResult,
   getMyAttempts, gradeShortAnswer, getQuizAnalytics,
 };

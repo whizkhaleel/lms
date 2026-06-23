@@ -75,17 +75,20 @@ async function getOrCreateConversation(userAId, userBId) {
   // Enforce canonical ordering — smaller UUID is always user_a
   const [a, b] = [userAId, userBId].sort();
 
+  const { rows } = await db.query(
+    `INSERT INTO dm_conversations (user_a_id, user_b_id)
+     VALUES ($1,$2)
+     ON CONFLICT (user_a_id, user_b_id) DO NOTHING
+     RETURNING *`,
+    [a, b]
+  );
+  if (rows[0]) return rows[0];
+
   const { rows: existing } = await db.query(
     'SELECT * FROM dm_conversations WHERE user_a_id=$1 AND user_b_id=$2',
     [a, b]
   );
-  if (existing[0]) return existing[0];
-
-  const { rows } = await db.query(
-    'INSERT INTO dm_conversations (user_a_id, user_b_id) VALUES ($1,$2) RETURNING *',
-    [a, b]
-  );
-  return rows[0];
+  return existing[0];
 }
 
 // ── Get all conversations for a user ──────────

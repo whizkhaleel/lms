@@ -22,6 +22,9 @@ router.delete('/quizzes/:quizId/questions/:questionId',  authorize('instructor',
 // ── Grading short answers (Instructor / Admin) ─
 router.patch ('/answers/:answerId/grade',      authorize('instructor','admin'), controller.gradeShortAnswer);
 
+// ── Student — get quiz by lesson (enrolled students) ──
+router.get   ('/quizzes/by-lesson/:lessonId', controller.getQuizByLesson);
+
 // ── Student — attempt flow ────────────────────
 router.post  ('/quizzes/:quizId/start',        controller.startAttempt);
 router.post  ('/attempts/:attemptId/submit',   controller.submitAttempt);

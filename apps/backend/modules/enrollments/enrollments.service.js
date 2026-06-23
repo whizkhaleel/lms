@@ -103,7 +103,7 @@ async function listEnrollments({ page = 1, limit = 20, courseId, userId: filterU
 }
 
 // ── Admin: manual enrollment ──────────────────
-async function manualEnroll(adminId, { userId, courseId }) {
+async function manualEnroll(adminId, { userId, courseId, note }) {
   const { rows: courseRows } = await db.query(
     'SELECT id FROM courses WHERE id = $1 AND deleted_at IS NULL',
     [courseId]
@@ -118,9 +118,9 @@ async function manualEnroll(adminId, { userId, courseId }) {
     [userId, courseId]
   );
   await db.query(
-    `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id)
-     VALUES ($1, 'enrollment.manual', 'enrollment', $2)`,
-    [adminId, rows[0].id]
+    `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, after_data)
+     VALUES ($1, 'enrollment.manual', 'enrollment', $2, $3)`,
+    [adminId, rows[0].id, JSON.stringify({ note: note || null })]
   );
   eventBus.emit('enrollment.created', { userId, courseId, orderId: null });
   return rows[0];
@@ -150,7 +150,7 @@ async function courseEnrollments(courseId, requestingUser) {
 }
 
 // ── Admin: revoke enrollment ──────────────────
-async function revokeEnrollment(enrollmentId, adminId) {
+async function revokeEnrollment(enrollmentId, adminId, reason) {
   const { rows } = await db.query(
     `UPDATE enrollments SET status = 'expired'
      WHERE id = $1 RETURNING id, user_id, course_id`,
@@ -158,10 +158,13 @@ async function revokeEnrollment(enrollmentId, adminId) {
   );
   if (!rows[0]) throw ApiError.notFound('Enrollment not found');
   await db.query(
-    `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id)
-     VALUES ($1, 'enrollment.revoked', 'enrollment', $2)`,
-    [adminId, enrollmentId]
+    `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, after_data)
+     VALUES ($1, 'enrollment.revoked', 'enrollment', $2, $3)`,
+    [adminId, enrollmentId, JSON.stringify({ reason: reason || null })]
   );
+  eventBus.emit('enrollment.revoked', {
+    userId: rows[0].user_id, courseId: rows[0].course_id,
+  });
   return rows[0];
 }
 
@@ -203,6 +206,9 @@ async function confirmPayment(paymentId, adminId) {
   const payment = pRows[0];
   if (!payment) throw ApiError.notFound('Payment record not found');
   if (payment.status === 'confirmed') throw ApiError.conflict('Payment already confirmed');
+  if (payment.origin === 'external_gateway') {
+    throw ApiError.badRequest('Use the gateway approve endpoint for webhook payments');
+  }
 
   const enrollment = await db.transaction(async (client) => {
     // Confirm payment
@@ -280,7 +286,7 @@ async function listPayments({ page = 1, limit = 20, status, courseId, userId: fi
          u.email, u.first_name, u.last_name,
          c.title AS course_title
        FROM manual_payments mp
-       JOIN users u ON u.id = mp.user_id
+       LEFT JOIN users u ON u.id = mp.user_id
        JOIN courses c ON c.id = mp.course_id
        ${where}
        ORDER BY mp.created_at DESC

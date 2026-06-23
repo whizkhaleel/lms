@@ -38,9 +38,21 @@ app.set('trust proxy', 1);
 // ── Socket.io ─────────────────────────────────
 const io = new Server(server, {
   cors: { origin: env.APP_URL, methods: ['GET', 'POST'] },
-  // Ping every 25s — detects dead connections
   pingInterval: 25000,
   pingTimeout:  10000,
+});
+
+// Socket.io authentication middleware — verify JWT from handshake auth
+const jwt = require('jsonwebtoken');
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+  if (!token) return next(new Error('Authentication required'));
+  jwt.verify(token, env.JWT_ACCESS_SECRET, (err, decoded) => {
+    if (err) return next(new Error('Invalid or expired token'));
+    socket.userId = decoded.id;
+    socket.userRole = decoded.role;
+    next();
+  });
 });
 app.set('io', io);
 
@@ -107,10 +119,13 @@ app.use(errorHandler);
 //    dm_{conversationId}         → real-time DM messages
 // ─────────────────────────────────────────────
 io.on('connection', (socket) => {
-  console.log(`[Socket] Connected: ${socket.id}`);
+  console.log(`[Socket] Connected: ${socket.id} (user ${socket.userId})`);
 
-  // Client joins their personal room on login
+  // Client joins their personal room (authenticated userId from JWT)
   socket.on('join_user', (userId) => {
+    if (userId !== socket.userId) {
+      return socket.emit('error', 'Unauthorized: cannot join another user\'s room');
+    }
     socket.join(`user_${userId}`);
     console.log(`[Socket] user_${userId} joined personal room`);
   });
@@ -131,9 +146,9 @@ io.on('connection', (socket) => {
     socket.leave(`dm_${conversationId}`);
   });
 
-  // Typing indicator for DMs
-  socket.on('dm_typing', ({ conversationId, userId, isTyping }) => {
-    socket.to(`dm_${conversationId}`).emit('dm_typing', { userId, isTyping });
+  // Typing indicator for DMs — use authenticated userId
+  socket.on('dm_typing', ({ conversationId, isTyping }) => {
+    socket.to(`dm_${conversationId}`).emit('dm_typing', { userId: socket.userId, isTyping });
   });
 
   socket.on('disconnect', () => {

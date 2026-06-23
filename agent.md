@@ -190,7 +190,7 @@ lmsdata/
 | `007_assessments.sql` | quizzes, quiz_questions, quiz_attempts, quiz_answers, assignments, assignment_submissions, grades |
 | `008_manual_payments.sql` | manual_payments |
 | `009_comms.sql` | forum_threads, forum_posts, forum_reactions, dm_conversations, dm_messages, notifications, notification_prefs |
-| `010_payment_gateway.sql` | Extends manual_payments (origin, buyer fields, external_reference, account_created, credentials_email_sent), adds must_change_password to users, creates payment_webhook_events |
+| `011_forum_thread_notification.sql` | Adds `forum_thread_created` to `notification_type` enum |
 
 ### Key Design Decisions
 
@@ -675,7 +675,7 @@ These are issues noted during development that must be addressed
 before Phase 12 (production hardening):
 
 | Issue | Location | Impact | Fix |
-|---|---|---|---|
+|---|---|---|---|---|
 | `/instructor/courses/new` and `/edit` show Placeholder | App.jsx | Instructor can't create/edit courses via UI | Build CourseBuilderPage |
 | `/instructor/submissions` shows Placeholder | App.jsx | Instructor can't grade from UI | Build SubmissionsPage |
 | `/admin/analytics` shows Placeholder | App.jsx | Admin can't view analytics | Build AdminAnalyticsPage |
@@ -686,6 +686,8 @@ before Phase 12 (production hardening):
 | `temp/` directory cleanup | lmsdata/temp/ | Orphaned temp files if upload fails mid-way | Add cron cleanup worker in Phase 10 |
 | Video streaming is full download | files.controller.js | No range request / chunked streaming | Add Accept-Ranges header support in Phase 11 |
 | No email queue | server.js | Email failures in eventBus listeners are fire-and-forget | Add BullMQ email worker in Phase 10 |
+| `pagenate.js` filename typo | shared/utils/ | File is misspelled (missing 'i') | Rename to paginate.js (breaking change — all imports must update) |
+| Dead `payment_method` enum type | migrations/010 | Created but never attached to any column | Remove from migration or attach to column |
 
 ---
 

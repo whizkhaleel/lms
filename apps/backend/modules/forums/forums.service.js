@@ -9,7 +9,9 @@ async function verifyCourseAccess(userId, courseId, role) {
   if (role === 'admin') return;
   const [enrolled, isInstructor] = await Promise.all([
     db.query(
-      `SELECT id FROM enrollments WHERE user_id=$1 AND course_id=$2 AND status='active'`,
+      `SELECT e.id FROM enrollments e
+       JOIN courses c ON c.id = e.course_id
+       WHERE e.user_id=$1 AND e.course_id=$2 AND e.status='active' AND c.deleted_at IS NULL`,
       [userId, courseId]
     ),
     db.query(
@@ -127,12 +129,13 @@ async function createThread(courseId, userId, role, { title, content }) {
   return rows[0];
 }
 
-async function updateThread(threadId, userId, role, updates) {
+async function updateThread(threadId, userId, role, courseId, updates) {
   const { rows } = await db.query(
     'SELECT author_id, course_id FROM forum_threads WHERE id = $1 AND deleted_at IS NULL',
     [threadId]
   );
   if (!rows[0]) throw ApiError.notFound('Thread not found');
+  await verifyCourseAccess(userId, rows[0].course_id, role);
   if (role !== 'admin' && role !== 'instructor' && rows[0].author_id !== userId) {
     throw ApiError.forbidden('You can only edit your own threads');
   }
@@ -154,10 +157,11 @@ async function updateThread(threadId, userId, role, updates) {
 
 async function deleteThread(threadId, userId, role) {
   const { rows } = await db.query(
-    'SELECT author_id FROM forum_threads WHERE id = $1 AND deleted_at IS NULL',
+    'SELECT author_id, course_id FROM forum_threads WHERE id = $1 AND deleted_at IS NULL',
     [threadId]
   );
   if (!rows[0]) throw ApiError.notFound('Thread not found');
+  await verifyCourseAccess(userId, rows[0].course_id, role);
   if (role !== 'admin' && role !== 'instructor' && rows[0].author_id !== userId) {
     throw ApiError.forbidden('You can only delete your own threads');
   }
@@ -197,7 +201,7 @@ async function listPosts(threadId, courseId, userId, role, { page = 1, limit = 3
          ) AS reactions,
          -- Did the current user react?
          COALESCE(
-           json_agg(fr.emoji) FILTER (WHERE fr.user_id = $3 AND fr.emoji IS NOT NULL),
+           json_agg(fr.emoji) FILTER (WHERE fr.user_id = $2 AND fr.emoji IS NOT NULL),
            '[]'
          ) AS my_reactions
        FROM forum_posts fp
@@ -210,8 +214,8 @@ async function listPosts(threadId, courseId, userId, role, { page = 1, limit = 3
        WHERE fp.thread_id = $1 AND fp.deleted_at IS NULL AND fp.parent_id IS NULL
        GROUP BY fp.id, u.id
        ORDER BY fp.is_answer DESC, fp.created_at ASC
-       LIMIT $4 OFFSET $5`,
-      [threadId, courseId, userId, limit, offset]
+       LIMIT $3 OFFSET $4`,
+      [threadId, userId, limit, offset]
     ),
   ]);
 
@@ -284,10 +288,13 @@ async function createPost(threadId, courseId, userId, role, { content, parentId 
 
 async function updatePost(postId, userId, role, { content }) {
   const { rows } = await db.query(
-    'SELECT author_id FROM forum_posts WHERE id=$1 AND deleted_at IS NULL',
+    `SELECT fp.author_id, ft.course_id FROM forum_posts fp
+     JOIN forum_threads ft ON ft.id = fp.thread_id
+     WHERE fp.id=$1 AND fp.deleted_at IS NULL`,
     [postId]
   );
   if (!rows[0]) throw ApiError.notFound('Post not found');
+  await verifyCourseAccess(userId, rows[0].course_id, role);
   if (role !== 'admin' && role !== 'instructor' && rows[0].author_id !== userId) {
     throw ApiError.forbidden('You can only edit your own posts');
   }
@@ -301,9 +308,13 @@ async function updatePost(postId, userId, role, { content }) {
 
 async function deletePost(postId, userId, role) {
   const { rows } = await db.query(
-    'SELECT author_id FROM forum_posts WHERE id=$1 AND deleted_at IS NULL', [postId]
+    `SELECT fp.author_id, ft.course_id FROM forum_posts fp
+     JOIN forum_threads ft ON ft.id = fp.thread_id
+     WHERE fp.id=$1 AND fp.deleted_at IS NULL`,
+    [postId]
   );
   if (!rows[0]) throw ApiError.notFound('Post not found');
+  await verifyCourseAccess(userId, rows[0].course_id, role);
   if (role !== 'admin' && role !== 'instructor' && rows[0].author_id !== userId) {
     throw ApiError.forbidden('You can only delete your own posts');
   }
@@ -319,22 +330,42 @@ async function markAsAnswer(postId, courseId, userId, role) {
     throw ApiError.forbidden('Only the instructor can mark an accepted answer');
   }
   // Toggle
-  await db.query(
-    `UPDATE forum_posts SET is_answer = NOT is_answer WHERE id=$1`, [postId]
+  const { rows: postRows } = await db.query(
+    `UPDATE forum_posts SET is_answer = NOT is_answer WHERE id=$1 RETURNING thread_id, is_answer`,
+    [postId]
   );
-  // If marking as answer, also mark thread as answered
-  const { rows } = await db.query(
-    'SELECT thread_id, is_answer FROM forum_posts WHERE id=$1', [postId]
-  );
-  if (rows[0]?.is_answer) {
+  if (!postRows[0]) throw ApiError.notFound('Post not found');
+  const nowAnswer = postRows[0].is_answer;
+  if (nowAnswer) {
     await db.query(
-      'UPDATE forum_threads SET is_answered=true WHERE id=$1', [rows[0].thread_id]
+      'UPDATE forum_threads SET is_answered=true WHERE id=$1', [postRows[0].thread_id]
     );
+  } else {
+    // Check if any other post in this thread is marked as answer
+    const { rows: other } = await db.query(
+      `SELECT id FROM forum_posts WHERE thread_id=$1 AND is_answer=true AND id!=$2 AND deleted_at IS NULL`,
+      [postRows[0].thread_id, postId]
+    );
+    if (!other[0]) {
+      await db.query(
+        'UPDATE forum_threads SET is_answered=false WHERE id=$1', [postRows[0].thread_id]
+      );
+    }
   }
 }
 
 // ── React to a post ───────────────────────────
-async function toggleReaction(postId, userId, emoji) {
+async function toggleReaction(postId, userId, emoji, role) {
+  // Verify the user has access to the post's course
+  const { rows: postRows } = await db.query(
+    `SELECT fp.id, ft.course_id FROM forum_posts fp
+     JOIN forum_threads ft ON ft.id = fp.thread_id
+     WHERE fp.id=$1 AND fp.deleted_at IS NULL`,
+    [postId]
+  );
+  if (!postRows[0]) throw ApiError.notFound('Post not found');
+  await verifyCourseAccess(userId, postRows[0].course_id, role);
+
   const existing = await db.query(
     'SELECT id FROM forum_reactions WHERE post_id=$1 AND user_id=$2 AND emoji=$3',
     [postId, userId, emoji]
