@@ -314,6 +314,19 @@ async function getSubmissionDetail(submissionId, requestingUser) {
     sub.user_id === requestingUser.id;
   if (!canView) throw ApiError.forbidden('Access denied');
 
+  // Resolve file details
+  const fileIds = sub.file_ids || [];
+  if (fileIds.length > 0) {
+    const { rows: files } = await db.query(
+      `SELECT id, original_name, storage_path, mime_type, size_bytes
+       FROM files WHERE id = ANY($1)`,
+      [fileIds]
+    );
+    sub.files = files;
+  } else {
+    sub.files = [];
+  }
+
   return sub;
 }
 
@@ -357,9 +370,31 @@ async function getGradebook(courseId, targetUserId, requestingUser) {
   };
 }
 
+// ─────────────────────────────────────────────
+//  LIST ASSIGNMENTS BY COURSE (Instructor)
+// ─────────────────────────────────────────────
+
+async function listCourseAssignments(courseId, requestingUser) {
+  await verifyCourseOwner(courseId, requestingUser);
+  const { rows } = await db.query(
+    `SELECT a.*, l.title AS lesson_title,
+            COUNT(asb.id) AS submission_count,
+            COUNT(asb.id) FILTER (WHERE asb.status = 'graded') AS graded_count
+     FROM assignments a
+     JOIN lessons l ON l.id = a.lesson_id
+     LEFT JOIN assignment_submissions asb ON asb.assignment_id = a.id
+     WHERE a.course_id = $1
+     GROUP BY a.id, l.title
+     ORDER BY a.created_at DESC`,
+    [courseId]
+  );
+  return rows;
+}
+
 module.exports = {
   createAssignment, updateAssignment, getAssignment,
   submitAssignment, getMySubmission,
   gradeSubmission, listSubmissions, getSubmissionDetail,
   getGradebook,
+  listCourseAssignments,
 };

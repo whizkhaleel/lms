@@ -348,6 +348,7 @@ Base URL: `http://localhost/api/v1`
 ### Submissions — `/api/v1/submissions`
 | Method | Path | Auth | Description |
 |---|---|---|---|
+| GET | `/assignments?courseId=:id` | Instructor+ | List assignments for a course |
 | POST | `/assignments` | Instructor+ | Create assignment (lessonId + courseId; lesson.type must be 'assignment') |
 | GET | `/assignments/:id` | Student+ | Get assignment details |
 | PATCH | `/assignments/:id` | Instructor+ | Update assignment |
@@ -515,7 +516,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/instructor/courses/new` | CourseBuilderPage | Instructor+ |
 | `/instructor/courses/:id/edit` | CourseBuilderPage | Instructor+ |
 | `/instructor/courses/:id/analytics` | Placeholder | Instructor+ |
-| `/instructor/submissions` | Placeholder (SubmissionsPage does not exist yet) | Instructor+ |
+| `/instructor/submissions` | SubmissionsPage | Instructor+ |
 | `/instructor/analytics` | InstructorAnalyticsPage | Instructor+ |
 | `/admin` | AdminDashboardPage | Admin+ |
 | `/admin/users` | AdminUsersPage | Admin+ |
@@ -549,7 +550,7 @@ These are the priority items for Option A completion.
 
 | Phase | What's Left | Priority |
 |---|---|---|
-| Option A — Remaining Placeholders | Build SubmissionsPage (instructor); wire remaining placeholder routes | HIGH |
+| Option A — Remaining Placeholders | Build course-level analytics page (`/instructor/courses/:id/analytics`) and admin analytics page (`/admin/analytics`) | HIGH |
 
 ### Remaining Phases ⬜
 
@@ -675,8 +676,7 @@ These are issues noted during development that must be addressed
 before Phase 12 (production hardening):
 
 | Issue | Location | Impact | Fix |
-|---|---|---|---|---|
-| `/instructor/submissions` shows Placeholder | App.jsx | Instructor can't grade from UI | Build SubmissionsPage |
+|---|---|---|---|---|---|
 | `/admin/analytics` shows Placeholder | App.jsx | Admin can't view analytics | Build AdminAnalyticsPage |
 | `/instructor/courses/:id/analytics` shows Placeholder | App.jsx | Instructor can't view course analytics | Build course-level analytics page |
 | `lmsdata/certificates/` directory is empty | lmsdata | Certificates not generated yet | Phase 8 |

@@ -30,6 +30,7 @@ router.get   ('/assignments/:assignmentId/my-submission', controller.getMySubmis
 
 // ── Grading (Instructor / Admin) ──────────────
 router.get   ('/assignments/:assignmentId/submissions',  authorize('instructor','admin'), controller.listSubmissions);
+router.get   ('/assignments',                            authorize('instructor','admin'), controller.listSubmissions);
 router.get   ('/submissions/:submissionId',              controller.getSubmissionDetail);
 router.patch ('/submissions/:submissionId/grade',        authorize('instructor','admin'), controller.gradeSubmission);
 

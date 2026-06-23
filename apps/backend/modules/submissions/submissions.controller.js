@@ -65,6 +65,11 @@ async function getMySubmission(req, res, next) {
 
 async function listSubmissions(req, res, next) {
   try {
+    const { courseId } = req.query;
+    if (courseId) {
+      const assignments = await service.listCourseAssignments(courseId, req.user);
+      return ApiResponse.success(res, { assignments });
+    }
     const submissions = await service.listSubmissions(req.params.assignmentId, req.user);
     ApiResponse.success(res, { submissions });
   } catch (err) { next(err); }

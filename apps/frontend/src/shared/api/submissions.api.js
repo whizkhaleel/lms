@@ -5,6 +5,7 @@ export const submissionsApi = {
   createAssignment: (data)              => api.post('/submissions/assignments', data),
   updateAssignment: (id, data)          => api.patch(`/submissions/assignments/${id}`, data),
   getAssignment:    (id)                => api.get(`/submissions/assignments/${id}`),
+  listAssignmentsByCourse: (courseId)   => api.get('/submissions/assignments', { params: { courseId } }),
 
   // Student submission
   submit:           (assignmentId, fd)  => api.post(`/submissions/assignments/${assignmentId}/submit`, fd, {
