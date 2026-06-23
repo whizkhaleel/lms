@@ -17,6 +17,7 @@ const createUserSchema = Joi.object({
   firstName: Joi.string().trim().min(1).max(100).required(),
   lastName:  Joi.string().trim().min(1).max(100).required(),
   role:      Joi.string().valid('student', 'instructor').required(),
+  password:  Joi.string().min(6).max(128).optional(),
 });
 
 async function createUser(req, res, next) {
@@ -24,7 +25,7 @@ async function createUser(req, res, next) {
     const { error, value } = createUserSchema.validate(req.body, { abortEarly: false });
     if (error) throw ApiError.badRequest('Validation failed', error.details.map((d) => d.message));
 
-    const { email, firstName, lastName, role } = value;
+    const { email, firstName, lastName, role, password } = value;
 
     const existing = await db.query(
       'SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL',
@@ -32,7 +33,7 @@ async function createUser(req, res, next) {
     );
     if (existing.rows[0]) throw ApiError.conflict('A user with this email already exists');
 
-    const tempPassword = generateTempPassword();
+    const tempPassword = password || generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, env.BCRYPT_SALT_ROUNDS);
 
     const rows = await db.transaction(async (client) => {
