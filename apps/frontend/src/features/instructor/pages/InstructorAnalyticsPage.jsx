@@ -80,7 +80,7 @@ export default function InstructorAnalyticsPage() {
           <div className="divide-y divide-gray-800">
             {analytics.lessons.map((l, i) => {
               const completionRate = analytics.course?.lesson_count > 0
-                ? Math.round((l.completions / Math.max(analytics.course.enrolled_count || 1, 1)) * 100)
+                ? Math.round((l.completions / Math.max(analytics.course.student_count || 1, 1)) * 100)
                 : 0;
               return (
                 <div key={l.id} className="flex items-center gap-4 px-5 py-4">

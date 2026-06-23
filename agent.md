@@ -109,7 +109,7 @@ src/
     classroom/      → ClassroomPage, VideoPlayer, CourseProgress
     dashboard/      → StudentDashboard
     assessments/    → QuizPlayer
-    instructor/     → InstructorDashboardPage, CourseBuilderPage, SubmissionsPage
+    instructor/     → InstructorDashboardPage, CourseBuilderPage, SubmissionsPage, CourseAnalyticsPage
     admin/          → AdminDashboardPage, PaymentGatewayPage
     messages/       → MessagesPage
     notifications/  → NotificationDrawer
@@ -515,7 +515,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/instructor` | InstructorDashboardPage | Instructor+ |
 | `/instructor/courses/new` | CourseBuilderPage | Instructor+ |
 | `/instructor/courses/:id/edit` | CourseBuilderPage | Instructor+ |
-| `/instructor/courses/:id/analytics` | Placeholder | Instructor+ |
+| `/instructor/courses/:id/analytics` | CourseAnalyticsPage | Instructor+ |
 | `/instructor/submissions` | SubmissionsPage | Instructor+ |
 | `/instructor/analytics` | InstructorAnalyticsPage | Instructor+ |
 | `/admin` | AdminDashboardPage | Admin+ |
@@ -550,7 +550,7 @@ These are the priority items for Option A completion.
 
 | Phase | What's Left | Priority |
 |---|---|---|
-| Option A — Remaining Placeholders | Build course-level analytics page (`/instructor/courses/:id/analytics`) and admin analytics page (`/admin/analytics`) | HIGH |
+| Option A — Remaining Placeholders | Build admin analytics page (`/admin/analytics`) | HIGH |
 
 ### Remaining Phases ⬜
 
@@ -678,7 +678,6 @@ before Phase 12 (production hardening):
 | Issue | Location | Impact | Fix |
 |---|---|---|---|---|---|
 | `/admin/analytics` shows Placeholder | App.jsx | Admin can't view analytics | Build AdminAnalyticsPage |
-| `/instructor/courses/:id/analytics` shows Placeholder | App.jsx | Instructor can't view course analytics | Build course-level analytics page |
 | `lmsdata/certificates/` directory is empty | lmsdata | Certificates not generated yet | Phase 8 |
 | `lmsdata/uploads/avatars/` not yet used | lmsdata | Profile photos not implemented | Phase 9 |
 | `BACKEND_PORT=0` resolves to 5000 | config/env.js | Minor — parseInt('0') is 0 but || 5000 kicks in | Low priority |

@@ -434,7 +434,7 @@ async function deleteBookmark(userId, lessonId, bookmarkId) {
 // ─────────────────────────────────────────────
 async function getCourseAnalytics(courseId, requestingUser) {
   const { rows: courseRows } = await db.query(
-    `SELECT id, instructor_id, lesson_count
+    `SELECT id, instructor_id, lesson_count, student_count
      FROM courses
      WHERE id = $1 AND deleted_at IS NULL`,
     [courseId]
