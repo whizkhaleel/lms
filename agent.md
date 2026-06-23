@@ -512,8 +512,8 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/messages` | MessagesPage | Student+ |
 | `/notifications` | NotificationsPage | Student+ |
 | `/instructor` | InstructorDashboardPage | Instructor+ |
-| `/instructor/courses/new` | Placeholder (CourseBuilderPage does not exist yet) | Instructor+ |
-| `/instructor/courses/:id/edit` | Placeholder (CourseBuilderPage does not exist yet) | Instructor+ |
+| `/instructor/courses/new` | CourseBuilderPage | Instructor+ |
+| `/instructor/courses/:id/edit` | CourseBuilderPage | Instructor+ |
 | `/instructor/courses/:id/analytics` | Placeholder | Instructor+ |
 | `/instructor/submissions` | Placeholder (SubmissionsPage does not exist yet) | Instructor+ |
 | `/instructor/analytics` | InstructorAnalyticsPage | Instructor+ |
@@ -549,7 +549,7 @@ These are the priority items for Option A completion.
 
 | Phase | What's Left | Priority |
 |---|---|---|
-| Option A — Remaining Placeholders | Build CourseBuilderPage and SubmissionsPage (instructor); wire remaining placeholder routes | HIGH |
+| Option A — Remaining Placeholders | Build SubmissionsPage (instructor); wire remaining placeholder routes | HIGH |
 
 ### Remaining Phases ⬜
 
@@ -676,7 +676,6 @@ before Phase 12 (production hardening):
 
 | Issue | Location | Impact | Fix |
 |---|---|---|---|---|
-| `/instructor/courses/new` and `/edit` show Placeholder | App.jsx | Instructor can't create/edit courses via UI | Build CourseBuilderPage |
 | `/instructor/submissions` shows Placeholder | App.jsx | Instructor can't grade from UI | Build SubmissionsPage |
 | `/admin/analytics` shows Placeholder | App.jsx | Admin can't view analytics | Build AdminAnalyticsPage |
 | `/instructor/courses/:id/analytics` shows Placeholder | App.jsx | Instructor can't view course analytics | Build course-level analytics page |

@@ -27,6 +27,7 @@ const AdminUsersPage      = lazy(() => import('./features/admin/pages/AdminUsers
 const AdminCoursesPage    = lazy(() => import('./features/admin/pages/AdminCoursesPage'));
 const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnrollmentsPage'));
 const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/InstructorAnalyticsPage'));
+const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseBuilderPage'));
 
 const Placeholder = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-64 text-gray-500">
@@ -96,8 +97,8 @@ export default function App() {
               <Route element={<RequireRole roles={['instructor','admin','super_admin']} />}>
                 <Route path="/instructor"                       element={<InstructorDashboard />} />
                 <Route path="/instructor/courses"              element={<Navigate to="/instructor" replace />} />
-                <Route path="/instructor/courses/new"           element={<Placeholder title="Create Course" />} />
-                <Route path="/instructor/courses/:id/edit"      element={<Placeholder title="Edit Course" />} />
+                <Route path="/instructor/courses/new"           element={<CourseBuilderPage />} />
+                <Route path="/instructor/courses/:id/edit"      element={<CourseBuilderPage />} />
                 <Route path="/instructor/courses/:id/analytics" element={<Placeholder title="Course Analytics" />} />
                 <Route path="/instructor/submissions"           element={<Placeholder title="Submissions" />} />
                 <Route path="/instructor/analytics"             element={<InstructorAnalyticsPage />} />
