@@ -26,18 +26,11 @@ const NotificationsPage   = lazy(() => import('./features/notifications/pages/No
 const AdminUsersPage      = lazy(() => import('./features/admin/pages/AdminUsersPage'));
 const AdminCoursesPage    = lazy(() => import('./features/admin/pages/AdminCoursesPage'));
 const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnrollmentsPage'));
+const AdminAnalyticsPage = lazy(() => import('./features/admin/pages/AdminAnalyticsPage'));
 const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/InstructorAnalyticsPage'));
 const CourseAnalyticsPage = lazy(() => import('./features/instructor/pages/CourseAnalyticsPage'));
 const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseBuilderPage'));
 const SubmissionsPage = lazy(() => import('./features/instructor/pages/SubmissionsPage'));
-
-const Placeholder = ({ title }) => (
-  <div className="flex flex-col items-center justify-center min-h-64 text-gray-500">
-    <p className="text-4xl mb-3">🚧</p>
-    <p className="font-semibold text-white text-lg">{title}</p>
-    <p className="text-sm mt-1">Coming soon in this phase</p>
-  </div>
-);
 
 // Connect Socket.io once the user is known
 function SocketInit() {
@@ -115,7 +108,7 @@ export default function App() {
                 <Route path="/admin/courses"     element={<AdminCoursesPage />} />
                 <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
                 <Route path="/admin/payments"    element={<PaymentGatewayPage />} />
-                <Route path="/admin/analytics"   element={<Placeholder title="Analytics" />} />
+                <Route path="/admin/analytics"   element={<AdminAnalyticsPage />} />
               </Route>
             </Route>
 

@@ -110,7 +110,7 @@ src/
     dashboard/      → StudentDashboard
     assessments/    → QuizPlayer
     instructor/     → InstructorDashboardPage, CourseBuilderPage, SubmissionsPage, CourseAnalyticsPage
-    admin/          → AdminDashboardPage, PaymentGatewayPage
+    admin/          → AdminDashboardPage, PaymentGatewayPage, AdminAnalyticsPage
     messages/       → MessagesPage
     notifications/  → NotificationDrawer
 ```
@@ -523,10 +523,9 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/admin/courses` | AdminCoursesPage | Admin+ |
 | `/admin/enrollments` | AdminEnrollmentsPage | Admin+ |
 | `/admin/payments` | PaymentGatewayPage | Admin+ |
-| `/admin/analytics` | Placeholder | Admin+ |
+| `/admin/analytics` | AdminAnalyticsPage | Admin+ |
 
-**Placeholders** = routes exist in App.jsx but show a "Coming soon" banner.
-These are the priority items for Option A completion.
+**Placeholders** = all previously placeholder routes are now built (SubmissionsPage, CourseAnalyticsPage, AdminAnalyticsPage).
 
 ---
 
@@ -548,9 +547,7 @@ These are the priority items for Option A completion.
 
 ### In Progress 🔄
 
-| Phase | What's Left | Priority |
-|---|---|---|
-| Option A — Remaining Placeholders | Build admin analytics page (`/admin/analytics`) | HIGH |
+(none — all Option A placeholders are now built)
 
 ### Remaining Phases ⬜
 
@@ -677,7 +674,6 @@ before Phase 12 (production hardening):
 
 | Issue | Location | Impact | Fix |
 |---|---|---|---|---|---|
-| `/admin/analytics` shows Placeholder | App.jsx | Admin can't view analytics | Build AdminAnalyticsPage |
 | `lmsdata/certificates/` directory is empty | lmsdata | Certificates not generated yet | Phase 8 |
 | `lmsdata/uploads/avatars/` not yet used | lmsdata | Profile photos not implemented | Phase 9 |
 | `BACKEND_PORT=0` resolves to 5000 | config/env.js | Minor — parseInt('0') is 0 but || 5000 kicks in | Low priority |
