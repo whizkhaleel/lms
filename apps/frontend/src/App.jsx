@@ -21,6 +21,12 @@ const MessagesPage        = lazy(() => import('./features/messages/pages/Message
 const InstructorDashboard = lazy(() => import('./features/instructor/pages/InstructorDashboardPage'));
 const AdminDashboard      = lazy(() => import('./features/admin/pages/AdminDashboardPage'));
 const PaymentGatewayPage  = lazy(() => import('./features/admin/pages/PaymentGatewayPage'));
+const ProfilePage         = lazy(() => import('./features/auth/pages/ProfilePage'));
+const NotificationsPage   = lazy(() => import('./features/notifications/pages/NotificationsPage'));
+const AdminUsersPage      = lazy(() => import('./features/admin/pages/AdminUsersPage'));
+const AdminCoursesPage    = lazy(() => import('./features/admin/pages/AdminCoursesPage'));
+const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnrollmentsPage'));
+const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/InstructorAnalyticsPage'));
 
 const Placeholder = ({ title }) => (
   <div className="flex flex-col items-center justify-center min-h-64 text-gray-500">
@@ -78,20 +84,21 @@ export default function App() {
             {/* Student — requires login only */}
             <Route element={<RequireAuth />}>
               <Route path="/dashboard"     element={<StudentDashboard />} />
-              <Route path="/profile"       element={<Placeholder title="Profile Settings" />} />
+              <Route path="/profile"       element={<ProfilePage />} />
               <Route path="/messages"      element={<MessagesPage />} />
-              <Route path="/notifications" element={<Placeholder title="All Notifications" />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
 
             {/* Instructor — requires login + role */}
             <Route element={<RequireAuth />}>
               <Route element={<RequireRole roles={['instructor','admin','super_admin']} />}>
                 <Route path="/instructor"                       element={<InstructorDashboard />} />
+                <Route path="/instructor/courses"              element={<Navigate to="/instructor" replace />} />
                 <Route path="/instructor/courses/new"           element={<Placeholder title="Create Course" />} />
                 <Route path="/instructor/courses/:id/edit"      element={<Placeholder title="Edit Course" />} />
                 <Route path="/instructor/courses/:id/analytics" element={<Placeholder title="Course Analytics" />} />
                 <Route path="/instructor/submissions"           element={<Placeholder title="Submissions" />} />
-                <Route path="/instructor/analytics"             element={<Placeholder title="Analytics" />} />
+                <Route path="/instructor/analytics"             element={<InstructorAnalyticsPage />} />
               </Route>
             </Route>
 
@@ -99,9 +106,9 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<RequireRole roles={['admin','super_admin']} />}>
                 <Route path="/admin"             element={<AdminDashboard />} />
-                <Route path="/admin/users"       element={<Placeholder title="User Management" />} />
-                <Route path="/admin/courses"     element={<Placeholder title="Course Management" />} />
-                <Route path="/admin/enrollments" element={<Placeholder title="Enrollment Management" />} />
+                <Route path="/admin/users"       element={<AdminUsersPage />} />
+                <Route path="/admin/courses"     element={<AdminCoursesPage />} />
+                <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
                 <Route path="/admin/payments"    element={<PaymentGatewayPage />} />
                 <Route path="/admin/analytics"   element={<Placeholder title="Analytics" />} />
               </Route>
