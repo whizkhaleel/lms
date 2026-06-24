@@ -85,6 +85,8 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/admin/enrollments" icon={GraduationCap}   label="Enrollments" />
               <NavItem to="/admin/payments"    icon={FileText}        label="Payments" />
               <NavItem to="/admin/analytics"   icon={BarChart3}       label="Analytics" />
+              <NavItem to="/admin/audit-logs" icon={FileText}        label="Audit Logs" />
+              <NavItem to="/admin/settings"   icon={Settings}        label="Settings" />
             </>
           )}
 

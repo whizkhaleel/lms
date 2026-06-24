@@ -85,6 +85,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+const adminRoutes = require('./modules/admin/admin.routes');
+
 // ── API Routes ────────────────────────────────
 app.use('/api/v1/auth',                        authRoutes);
 app.use('/api/v1/users',                       userRoutes);
@@ -100,6 +102,7 @@ app.use('/api/v1/messages',                    messageRoutes);        // ← Pha
 app.use('/api/v1/notifications',               notificationRoutes);   // ← Phase 6
 app.use('/api/v1/certificates',                certificateRoutes);    // ← Phase 8
 app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← External payment gateway
+app.use('/api/v1/admin',                        adminRoutes);           // ← Phase 9
 
 // ── 404 ───────────────────────────────────────
 app.use((req, res) => {

@@ -27,6 +27,8 @@ const AdminUsersPage      = lazy(() => import('./features/admin/pages/AdminUsers
 const AdminCoursesPage    = lazy(() => import('./features/admin/pages/AdminCoursesPage'));
 const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnrollmentsPage'));
 const AdminAnalyticsPage = lazy(() => import('./features/admin/pages/AdminAnalyticsPage'));
+const AuditLogPage       = lazy(() => import('./features/admin/pages/AuditLogPage'));
+const AdminSettingsPage  = lazy(() => import('./features/admin/pages/AdminSettingsPage'));
 const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/InstructorAnalyticsPage'));
 const CourseAnalyticsPage = lazy(() => import('./features/instructor/pages/CourseAnalyticsPage'));
 const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseBuilderPage'));
@@ -113,6 +115,8 @@ export default function App() {
                 <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
                 <Route path="/admin/payments"    element={<PaymentGatewayPage />} />
                 <Route path="/admin/analytics"   element={<AdminAnalyticsPage />} />
+                <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+                <Route path="/admin/settings"   element={<AdminSettingsPage />} />
               </Route>
             </Route>
 
