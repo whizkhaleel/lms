@@ -33,15 +33,6 @@ export function useAuth() {
     onError: (err) => toast.error(err.response?.data?.message || 'Login failed'),
   });
 
-  const registerMutation = useMutation({
-    mutationFn: authApi.register,
-    onSuccess: () => {
-      toast.success('Account created! Please check your email to verify.');
-      navigate('/login');
-    },
-    onError: (err) => toast.error(err.response?.data?.message || 'Registration failed'),
-  });
-
   const logoutMutation = useMutation({
     mutationFn: () => authApi.logout({ refreshToken: useAuthStore.getState().refreshToken }),
     onSettled: () => {

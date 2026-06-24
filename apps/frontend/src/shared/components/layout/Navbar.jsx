@@ -148,8 +148,7 @@ export default function Navbar({ onMenuToggle }) {
 
         {!user && (
           <div className="flex items-center gap-2">
-            <Link to="/login"    className="btn-ghost text-sm">Sign in</Link>
-            <Link to="/register" className="btn-primary text-sm">Get started</Link>
+            <Link to="/login" className="btn-primary text-sm">Sign in</Link>
           </div>
         )}
       </nav>
