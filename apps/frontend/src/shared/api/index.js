@@ -5,3 +5,4 @@ export { usersApi }          from './users.api';
 export { submissionsApi }    from './submissions.api';
 export { enrollmentsApi }    from './enrollments.api';
 export { analyticsApi }      from './analytics.api';
+export { certificatesApi }    from './certificates.api';

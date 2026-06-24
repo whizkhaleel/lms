@@ -27,6 +27,7 @@ const submissionRoutes  = require('./modules/submissions/submissions.routes');
 const forumRoutes       = require('./modules/forums/forums.routes');
 const messageRoutes     = require('./modules/messages/messages.routes');
 const notificationRoutes = require('./modules/notifications/notifications.routes');
+const certificateRoutes  = require('./modules/certificates/certificates.routes');
 const paymentWebhookRoutes = require('./modules/enrollments/payment-webhook.routes');
 
 const app    = express();
@@ -97,6 +98,7 @@ app.use('/api/v1/assessments',                 assessmentRoutes);
 app.use('/api/v1/submissions',                 submissionRoutes);
 app.use('/api/v1/messages',                    messageRoutes);        // ← Phase 6
 app.use('/api/v1/notifications',               notificationRoutes);   // ← Phase 6
+app.use('/api/v1/certificates',                certificateRoutes);    // ← Phase 8
 app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← External payment gateway
 
 // ── 404 ───────────────────────────────────────
@@ -162,24 +164,39 @@ io.on('connection', (socket) => {
 const { notify } = require('./modules/notifications/notifications.service');
 
 // Phase 3 — progress
-eventBus.on('lesson.completed', ({ userId, lessonId, courseId }) => {
+eventBus.on('lesson.completed', async ({ userId, lessonId, courseId }) => {
   io.to(`user_${userId}`).emit('lesson_completed', { lessonId, courseId });
+  try {
+    const certService = require('./modules/certificates/certificates.service');
+    // Count completed lessons in this course
+    const { rows } = await db.query(
+      `SELECT COUNT(*) AS cnt FROM lesson_progress
+       WHERE user_id=$1 AND course_id=$2 AND is_completed=true`,
+      [userId, courseId]
+    );
+    await certService.awardLessonCompleteXp(userId, parseInt(rows[0]?.cnt || 0, 10));
+  } catch (err) {
+    console.error('[Events] lesson.completed XP error:', err.message);
+  }
 });
 
 eventBus.on('course.completed', async ({ userId, courseId }) => {
   io.to(`user_${userId}`).emit('course_completed', { courseId });
-  // Fetch course title for notification
   try {
+    // Generate certificate
+    const certService = require('./modules/certificates/certificates.service');
+    await certService.issueCertificate(userId, courseId);
+
     const { rows } = await db.query('SELECT title FROM courses WHERE id=$1', [courseId]);
     await notify(io, {
       userId,
       type:  'certificate_issued',
-      title: '🎉 Course Completed!',
-      body:  `You have completed "${rows[0]?.title}". Your certificate is being generated.`,
+      title: '🎉 Certificate Ready!',
+      body:  `You completed "${rows[0]?.title}". View your certificate in your profile.`,
       data:  { courseId },
     });
   } catch (err) {
-    console.error('[Events] course.completed notify error:', err.message);
+    console.error('[Events] course.completed error:', err.message);
   }
 });
 
@@ -200,7 +217,7 @@ eventBus.on('enrollment.created', async ({ userId, courseId }) => {
 });
 
 // Phase 4 — assessments
-eventBus.on('quiz.submitted', async ({ userId, courseId, passed, scorePct }) => {
+eventBus.on('quiz.submitted', async ({ userId, courseId, passed, scorePct, quizId }) => {
   io.to(`user_${userId}`).emit('quiz_result', { courseId, passed, scorePct });
   try {
     await notify(io, {
@@ -210,8 +227,13 @@ eventBus.on('quiz.submitted', async ({ userId, courseId, passed, scorePct }) => 
       body:  `You scored ${scorePct}%. ${passed ? 'Well done!' : 'Review the material and try again.'}`,
       data:  { courseId, passed, scorePct },
     });
+    // Award perfect score badge if 100%
+    if (parseFloat(scorePct) === 100) {
+      const certService = require('./modules/certificates/certificates.service');
+      await certService.awardQuizPerfectXp(userId, quizId);
+    }
   } catch (err) {
-    console.error('[Events] quiz.submitted notify error:', err.message);
+    console.error('[Events] quiz.submitted error:', err.message);
   }
 });
 

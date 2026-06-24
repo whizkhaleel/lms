@@ -104,7 +104,7 @@ src/
     hooks/          → useAuth.js, useNotifications.js
     stores/         → authStore.js (Zustand persisted), socketStore.js (Socket.io singleton)
   features/
-    auth/           → LoginPage, RegisterPage, ForgotPasswordPage, ChangePasswordPage
+    auth/           → LoginPage, ForgotPasswordPage, ChangePasswordPage
     courses/        → CourseCatalogPage, CourseDetailPage
     classroom/      → ClassroomPage, VideoPlayer, CourseProgress
     dashboard/      → StudentDashboard
@@ -113,6 +113,7 @@ src/
     admin/          → AdminDashboardPage, PaymentGatewayPage, AdminAnalyticsPage
     messages/       → MessagesPage
     notifications/  → NotificationDrawer
+    certificates/   → CertificatesPage, LeaderboardPage
 ```
 
 ### State Management Rules
@@ -191,6 +192,7 @@ lmsdata/
 | `008_manual_payments.sql` | manual_payments |
 | `009_comms.sql` | forum_threads, forum_posts, forum_reactions, dm_conversations, dm_messages, notifications, notification_prefs |
 | `011_forum_thread_notification.sql` | Adds `forum_thread_created` to `notification_type` enum |
+| `012_certificates_gamification.sql` | `certificates`, `user_xp`, `xp_transactions`, `badges`, `user_badges`, adds `xp_earned` to `course_progress` |
 
 ### Key Design Decisions
 
@@ -360,6 +362,14 @@ Base URL: `http://localhost/api/v1`
 | GET | `/gradebook/:courseId` | Student | My gradebook for a course |
 | GET | `/gradebook/:courseId/user/:userId` | Instructor+ | Another student's gradebook |
 
+### Certificates — `/api/v1/certificates`
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/my` | Student+ | My certificates |
+| GET | `/my/xp` | Student+ | My XP, level, and earned badges |
+| GET | `/leaderboard` | Student+ | Top users by XP (query: ?limit=) |
+| GET | `/courses/:courseId` | Instructor+ | Certificates issued for a course |
+
 ### Files — `/api/v1/files`
 | Method | Path | Auth | Description |
 |---|---|---|---|
@@ -512,6 +522,8 @@ RATE_LIMIT_MAX_REQUESTS=100
 | `/profile` | ProfilePage | Student+ |
 | `/messages` | MessagesPage | Student+ |
 | `/notifications` | NotificationsPage | Student+ |
+| `/achievements` | CertificatesPage | Student+ |
+| `/leaderboard` | LeaderboardPage | Student+ |
 | `/instructor` | InstructorDashboardPage | Instructor+ |
 | `/instructor/courses/new` | CourseBuilderPage | Instructor+ |
 | `/instructor/courses/:id/edit` | CourseBuilderPage | Instructor+ |
@@ -542,18 +554,18 @@ RATE_LIMIT_MAX_REQUESTS=100
 | 5 | Payment system → replaced with manual + gateway flow | ✅ Complete |
 | 6 | Forums, messaging, real-time notifications | ✅ Complete |
 | 7 | Full React frontend build (app shell + all core pages) | ✅ Complete |
+| 8 | Certificates & Gamification — PDF certificates (pdfkit), XP system, badges, leaderboard, streak rewards | ✅ Complete |
 | Gateway | External payment webhook + account auto-provisioning + Gmail email | ✅ Complete |
 | Option A (partial) | Backend bug fixes (route ordering, /my-courses endpoint, admin getAllCourses) | ✅ Complete |
 
 ### In Progress 🔄
 
-(none — all Option A placeholders are now built)
+(none)
 
 ### Remaining Phases ⬜
 
 | Phase | Deliverables |
 |---|---|
-| 8 — Certificates & Gamification | PDF certificate generation (Puppeteer, writes to `lmsdata/certificates/`), badge system, XP points, leaderboards, streak rewards |
 | 9 — Admin Panel Completion | Full admin analytics dashboard (revenue, engagement, completion rates), audit log viewer, institution settings, user bulk actions |
 | 10 — Performance & Caching | Redis caching strategy for course catalog and dashboard, DB query optimization (EXPLAIN ANALYZE), connection pooling tuning |
 | 11 — Load Testing & Security Hardening | k6 load testing suite, rate limiting audit, SQL injection verification, file upload security review, CORS hardening |
@@ -674,7 +686,6 @@ before Phase 12 (production hardening):
 
 | Issue | Location | Impact | Fix |
 |---|---|---|---|---|---|
-| `lmsdata/certificates/` directory is empty | lmsdata | Certificates not generated yet | Phase 8 |
 | `lmsdata/uploads/avatars/` not yet used | lmsdata | Profile photos not implemented | Phase 9 |
 | `BACKEND_PORT=0` resolves to 5000 | config/env.js | Minor — parseInt('0') is 0 but || 5000 kicks in | Low priority |
 | `temp/` directory cleanup | lmsdata/temp/ | Orphaned temp files if upload fails mid-way | Add cron cleanup worker in Phase 10 |

@@ -31,6 +31,8 @@ const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/I
 const CourseAnalyticsPage = lazy(() => import('./features/instructor/pages/CourseAnalyticsPage'));
 const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseBuilderPage'));
 const SubmissionsPage = lazy(() => import('./features/instructor/pages/SubmissionsPage'));
+const CertificatesPage = lazy(() => import('./features/certificates/pages/CertificatesPage'));
+const LeaderboardPage = lazy(() => import('./features/certificates/pages/LeaderboardPage'));
 
 // Connect Socket.io once the user is known
 function SocketInit() {
@@ -85,6 +87,8 @@ export default function App() {
               <Route path="/profile"       element={<ProfilePage />} />
               <Route path="/messages"      element={<MessagesPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/achievements"  element={<CertificatesPage />} />
+              <Route path="/leaderboard"   element={<LeaderboardPage />} />
             </Route>
 
             {/* Instructor — requires login + role */}
