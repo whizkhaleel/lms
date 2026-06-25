@@ -52,8 +52,8 @@ export default function Sidebar({ open, onClose }) {
       )}>
         <div className="flex flex-col gap-1 p-3 flex-1">
 
-          {/* Student nav */}
-          {user && (
+          {/* Student / Admin learning nav (hidden for pure instructors) */}
+          {user && user.role !== 'instructor' && (
             <>
               <SectionLabel label="Learning" />
               <NavItem to="/dashboard"  icon={LayoutDashboard} label="My Dashboard" end />
@@ -69,7 +69,6 @@ export default function Sidebar({ open, onClose }) {
               <SectionLabel label="Teaching" />
               <NavItem to="/instructor"              icon={GraduationCap} label="Instructor Panel" end />
               <NavItem to="/instructor/courses"      icon={BookOpen}      label="My Courses" />
-              <NavItem to="/instructor/courses/new"  icon={PlusCircle}    label="New Course" />
               <NavItem to="/instructor/submissions"  icon={FileText}      label="Submissions" />
               <NavItem to="/instructor/analytics"    icon={BarChart3}     label="Analytics" />
             </>
@@ -82,8 +81,9 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/admin"             icon={Settings}        label="Admin Panel" end />
               <NavItem to="/admin/users"       icon={Users}           label="Users" />
               <NavItem to="/admin/courses"     icon={BookOpen}        label="All Courses" />
+              <NavItem to="/admin/courses/new" icon={PlusCircle}     label="Create Course" />
               <NavItem to="/admin/enrollments" icon={GraduationCap}   label="Enrollments" />
-              <NavItem to="/admin/payments"    icon={FileText}        label="Payments" />
+
               <NavItem to="/admin/analytics"   icon={BarChart3}       label="Analytics" />
               <NavItem to="/admin/audit-logs" icon={FileText}        label="Audit Logs" />
               <NavItem to="/admin/settings"   icon={Settings}        label="Settings" />

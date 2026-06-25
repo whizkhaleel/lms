@@ -41,7 +41,7 @@ async function createQuiz(req, res, next) {
   try {
     const { lessonId, courseId } = req.body;
     if (!lessonId || !courseId) throw ApiError.badRequest('lessonId and courseId are required');
-    const { error, value } = quizSchema.validate(req.body, { abortEarly: false });
+    const { error, value } = quizSchema.validate(req.body, { abortEarly: false, allowUnknown: true });
     if (error) throw ApiError.badRequest('Validation failed', error.details.map(d => d.message));
     const quiz = await service.createQuiz(lessonId, courseId, value, req.user);
     ApiResponse.created(res, { quiz }, 'Quiz created');

@@ -89,16 +89,6 @@ export default function CourseDetailPage() {
               className="w-full h-40 object-cover rounded-xl"
             />
           )}
-          <div className="text-center">
-            {course.is_free ? (
-              <span className="text-2xl font-bold text-green-400">Free</span>
-            ) : (
-              <span className="text-2xl font-bold text-white">
-                {course.currency} {parseFloat(course.price).toLocaleString()}
-              </span>
-            )}
-          </div>
-
           {isEnrolled ? (
             <Link to={`/learn/${course.id}`} className="btn-primary btn w-full">
               <Play size={16} /> Continue Learning
@@ -107,23 +97,14 @@ export default function CourseDetailPage() {
             <Link to={`/instructor/courses/${course.id}/edit`} className="btn-secondary btn w-full">
               Edit Course
             </Link>
-          ) : course.is_free ? (
+          ) : (
             <Button
               className="w-full"
               loading={enrollMutation.isPending}
               onClick={() => user ? enrollMutation.mutate() : navigate('/login')}
             >
-              Enroll for Free
+              Enroll Now
             </Button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-gray-400 text-center">
-                Paid course — contact admin to enroll
-              </p>
-              <Button variant="secondary" className="w-full" onClick={() => navigate('/messages')}>
-                Contact Admin
-              </Button>
-            </div>
           )}
 
           <div className="flex flex-col gap-1.5 text-xs text-gray-400 border-t border-gray-700 pt-3">
@@ -183,7 +164,7 @@ export default function CourseDetailPage() {
                       className="flex items-center justify-between px-4 py-2.5 text-sm
                                  text-gray-400 rounded-lg hover:bg-white/3">
                       <span className="flex items-center gap-2">
-                        {lesson.is_free_preview
+                        {isEnrolled
                           ? <Play size={13} className="text-[#3B9EE8]" />
                           : <Lock size={13} className="text-gray-600" />
                         }

@@ -20,11 +20,11 @@ const ClassroomPage       = lazy(() => import('./features/classroom/pages/Classr
 const MessagesPage        = lazy(() => import('./features/messages/pages/MessagesPage'));
 const InstructorDashboard = lazy(() => import('./features/instructor/pages/InstructorDashboardPage'));
 const AdminDashboard      = lazy(() => import('./features/admin/pages/AdminDashboardPage'));
-const PaymentGatewayPage  = lazy(() => import('./features/admin/pages/PaymentGatewayPage'));
 const ProfilePage         = lazy(() => import('./features/auth/pages/ProfilePage'));
 const NotificationsPage   = lazy(() => import('./features/notifications/pages/NotificationsPage'));
 const AdminUsersPage      = lazy(() => import('./features/admin/pages/AdminUsersPage'));
 const AdminCoursesPage    = lazy(() => import('./features/admin/pages/AdminCoursesPage'));
+const AdminCreateCoursePage = lazy(() => import('./features/admin/pages/AdminCreateCoursePage'));
 const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnrollmentsPage'));
 const AdminAnalyticsPage = lazy(() => import('./features/admin/pages/AdminAnalyticsPage'));
 const AuditLogPage       = lazy(() => import('./features/admin/pages/AuditLogPage'));
@@ -98,7 +98,6 @@ export default function App() {
               <Route element={<RequireRole roles={['instructor','admin','super_admin']} />}>
                 <Route path="/instructor"                       element={<InstructorDashboard />} />
                 <Route path="/instructor/courses"              element={<Navigate to="/instructor" replace />} />
-                <Route path="/instructor/courses/new"           element={<CourseBuilderPage />} />
                 <Route path="/instructor/courses/:id/edit"      element={<CourseBuilderPage />} />
                 <Route path="/instructor/courses/:id/analytics" element={<CourseAnalyticsPage />} />
                 <Route path="/instructor/submissions"           element={<SubmissionsPage />} />
@@ -112,8 +111,8 @@ export default function App() {
                 <Route path="/admin"             element={<AdminDashboard />} />
                 <Route path="/admin/users"       element={<AdminUsersPage />} />
                 <Route path="/admin/courses"     element={<AdminCoursesPage />} />
+                <Route path="/admin/courses/new" element={<AdminCreateCoursePage />} />
                 <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
-                <Route path="/admin/payments"    element={<PaymentGatewayPage />} />
                 <Route path="/admin/analytics"   element={<AdminAnalyticsPage />} />
                 <Route path="/admin/audit-logs" element={<AuditLogPage />} />
                 <Route path="/admin/settings"   element={<AdminSettingsPage />} />

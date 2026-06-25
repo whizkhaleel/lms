@@ -86,6 +86,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 const adminRoutes = require('./modules/admin/admin.routes');
+const { apiLimiter } = require('./shared/middleware/rateLimiter');
 
 // ── API Routes ────────────────────────────────
 app.use('/api/v1/auth',                        authRoutes);
@@ -304,6 +305,18 @@ eventBus.on('user.forgot_password', async ({ email, firstName, resetToken }) => 
     console.error('[Events] user.forgot_password email error:', err.message);
   }
 });
+
+// ── Cache invalidation via events ──────────
+eventBus.on('course.created',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
+eventBus.on('course.updated',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
+eventBus.on('course.published', async () => {
+  await require('./shared/utils/cache').invalidatePattern('courses:list:*');
+  await require('./shared/utils/cache').invalidate('admin:analytics');
+});
+eventBus.on('course.deleted',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
+eventBus.on('enrollment.created', async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
+eventBus.on('course.completed',   async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
+eventBus.on('user.registered',    async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
 
 // ── Connect DB and Redis before accepting traffic ────
 (async () => {

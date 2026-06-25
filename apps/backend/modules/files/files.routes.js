@@ -7,6 +7,7 @@ const router  = express.Router();
 
 const controller   = require('./files.controller');
 const authenticate = require('../../shared/middleware/authenticate');
+const authorize    = require('../../shared/middleware/authorize');
 const storage      = require('../../config/storage');
 
 // Multer config - files land in lmsdata/temp first
@@ -24,8 +25,8 @@ const upload = multer({
 // All file routes require authentication
 router.use(authenticate);
 
-router.post('/upload', upload.single('file'), controller.upload);
+router.post('/upload', authorize('instructor', 'admin'), upload.single('file'), controller.upload);
 router.get('/:id', controller.serve);
-router.delete('/:id', controller.remove);
+router.delete('/:id', authorize('instructor', 'admin'), controller.remove);
 
 module.exports = router;

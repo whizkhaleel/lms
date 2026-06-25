@@ -11,14 +11,12 @@ const courseSchema = Joi.object({
   description:      Joi.string().max(5000),
   shortDescription: Joi.string().max(500),
   categoryId:       Joi.string().uuid(),
-  isFree:           Joi.boolean(),
-  price:            Joi.number().min(0).when('isFree', { is: false, then: Joi.required() }),
-  discountPrice:    Joi.number().min(0),
   level:            Joi.string().valid('beginner', 'intermediate', 'advanced'),
   language:         Joi.string().max(50),
   tags:             Joi.array().items(Joi.string()).max(10),
   requirements:     Joi.array().items(Joi.string()).max(20),
   objectives:       Joi.array().items(Joi.string()).max(20),
+  instructorId:     Joi.string().uuid().required(),
 });
 
 const sectionSchema = Joi.object({
@@ -29,8 +27,8 @@ const sectionSchema = Joi.object({
 // ── Public ────────────────────────────────────
 async function listCourses(req, res, next) {
   try {
-    const { page, limit, category, search, level, isFree, sort } = req.query;
-    const result = await service.listCourses({ page, limit, category, search, level, isFree, sort });
+    const { page, limit, category, search, level, sort } = req.query;
+    const result = await service.listCourses({ page, limit, category, search, level, sort });
     const { courses, total, ...rest } = result;
     ApiResponse.paginated(res, courses, {
       total, page: rest.page, limit: rest.limit,
@@ -56,13 +54,14 @@ async function listCategories(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// ── Instructor / Admin ────────────────────────
+// ── Admin ─────────────────────────────────────
 async function createCourse(req, res, next) {
   try {
     const { error, value } = courseSchema.validate(req.body, { abortEarly: false });
     if (error) throw ApiError.badRequest('Validation failed', error.details.map(d => d.message));
 
-    const course = await service.createCourse({ ...value, instructorId: req.user.id });
+    const { instructorId, ...courseData } = value;
+    const course = await service.createCourse({ ...courseData, instructorId });
     ApiResponse.created(res, { course }, 'Course created successfully');
   } catch (err) { next(err); }
 }
@@ -102,7 +101,7 @@ async function deleteCourse(req, res, next) {
 async function uploadThumbnail(req, res, next) {
   try {
     if (!req.file) throw ApiError.badRequest('No file provided');
-    const file = await service.uploadThumbnail(req.params.id, req.file, req.user.id);
+    const file = await service.uploadThumbnail(req.params.id, req.file, req.user.id, req.user);
     ApiResponse.success(res, { file }, 'Thumbnail uploaded successfully');
   } catch (err) { next(err); }
 }
@@ -144,7 +143,6 @@ async function reorderSections(req, res, next) {
 
 async function getMyCourses(req, res, next) {
   try {
-    // Admins see all courses (any status); instructors see only their own
     const courses = req.user.role === 'admin'
       ? await service.getAllCoursesForAdmin({ status: req.query.status, search: req.query.search })
       : await service.getMyCourses(req.user.id);

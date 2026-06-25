@@ -23,11 +23,12 @@ async function myEnrollments(req, res, next) {
 
 async function listEnrollments(req, res, next) {
   try {
-    const { limit, offset, pagination } = paginate(req.query);
+    const { limit, pagination } = paginate(req.query);
     const result = await service.listEnrollments({
       page: req.query.page, limit,
       courseId: req.query.courseId,
-      userId:   req.query.userId,
+      search: req.query.search,
+      status: req.query.status,
     });
     ApiResponse.paginated(res, result.enrollments, pagination(result.total));
   } catch (err) { next(err); }
@@ -35,68 +36,24 @@ async function listEnrollments(req, res, next) {
 
 async function manualEnroll(req, res, next) {
   try {
-    const { userId, courseId, note } = req.body;
+    const { userId, courseId } = req.body;
     if (!userId || !courseId) throw ApiError.badRequest('userId and courseId are required');
-    const enrollment = await service.manualEnroll(req.user.id, { userId, courseId, note });
+    const enrollment = await service.manualEnroll(req.user.id, { userId, courseId });
     ApiResponse.created(res, { enrollment }, 'Student enrolled successfully');
   } catch (err) { next(err); }
 }
 
 async function courseEnrollments(req, res, next) {
   try {
-    const enrollments = await service.courseEnrollments(req.params.courseId, req.user);
+    const enrollments = await service.courseEnrollments(req.params.courseId);
     ApiResponse.success(res, { enrollments });
   } catch (err) { next(err); }
 }
 
 async function revokeEnrollment(req, res, next) {
   try {
-    const { reason } = req.body;
-    const enrollment = await service.revokeEnrollment(
-      req.params.enrollmentId, req.user.id, reason
-    );
-    ApiResponse.success(res, { enrollment }, 'Enrollment revoked');
-  } catch (err) { next(err); }
-}
-
-async function recordPayment(req, res, next) {
-  try {
-    const { userId, courseId, amount, currency, paymentMethod, reference, notes } = req.body;
-    if (!userId || !courseId || !amount) {
-      throw ApiError.badRequest('userId, courseId, and amount are required');
-    }
-    const payment = await service.recordPayment(req.user.id, {
-      userId, courseId, amount, currency, paymentMethod, reference, notes
-    });
-    ApiResponse.created(res, { payment }, 'Payment recorded');
-  } catch (err) { next(err); }
-}
-
-async function confirmPayment(req, res, next) {
-  try {
-    const result = await service.confirmPayment(req.params.paymentId, req.user.id);
-    ApiResponse.success(res, result, 'Payment confirmed — student enrolled');
-  } catch (err) { next(err); }
-}
-
-async function rejectPayment(req, res, next) {
-  try {
-    const { reason } = req.body;
-    const payment = await service.rejectPayment(req.params.paymentId, req.user.id, reason);
-    ApiResponse.success(res, { payment }, 'Payment rejected');
-  } catch (err) { next(err); }
-}
-
-async function listPayments(req, res, next) {
-  try {
-    const { limit, offset, pagination } = paginate(req.query);
-    const result = await service.listPayments({
-      page: req.query.page, limit,
-      status:   req.query.status,
-      courseId: req.query.courseId,
-      userId:   req.query.userId,
-    });
-    ApiResponse.paginated(res, result.payments, pagination(result.total));
+    await service.revokeEnrollment(req.params.enrollmentId, req.user.id);
+    ApiResponse.success(res, {}, 'Enrollment revoked');
   } catch (err) { next(err); }
 }
 
@@ -104,45 +61,42 @@ async function listPayments(req, res, next) {
 // req.body here is a raw Buffer (see server.js raw-body middleware)
 async function paymentWebhook(req, res, next) {
   try {
-    const signature = req.headers['x-webhook-signature'];
-    const result = await service.receiveWebhook(req.body, signature);
-    // Always 200 on successful receipt so the payment site doesn't retry forever
-    res.status(200).json({ success: true, duplicate: result.duplicate });
+    const result = await service.receiveWebhook(req);
+    res.status(200).json({ success: true, ...result });
   } catch (err) { next(err); }
 }
 
-async function listGatewayPayments(req, res, next) {
+// ── Admin: list pending external enrollments ────
+async function listPending(req, res, next) {
   try {
-    const { limit, offset, pagination } = paginate(req.query);
-    const result = await service.listGatewayPayments({
-      page: req.query.page, limit, status: req.query.status,
+    const { limit, pagination } = paginate(req.query);
+    const result = await service.listPendingEnrollments({
+      page: req.query.page, limit,
     });
     ApiResponse.paginated(res, result.payments, pagination(result.total));
   } catch (err) { next(err); }
 }
 
-async function approveGatewayPayment(req, res, next) {
+// ── Admin: approve a pending enrollment ─────────
+async function approvePending(req, res, next) {
   try {
-    const result = await service.approveGatewayPayment(req.params.paymentId, req.user.id);
-    ApiResponse.success(res, result,
-      result.isNewAccount
-        ? 'Account created, student enrolled, and login details emailed'
-        : 'Student enrolled and notified by email'
-    );
+    const result = await service.approvePendingEnrollment(req.params.paymentId, req.user.id);
+    ApiResponse.success(res, result, 'Enrollment approved');
   } catch (err) { next(err); }
 }
 
-async function rejectGatewayPayment(req, res, next) {
+// ── Admin: reject a pending enrollment ──────────
+async function rejectPending(req, res, next) {
   try {
     const { reason } = req.body;
-    const payment = await service.rejectGatewayPayment(req.params.paymentId, req.user.id, reason);
-    ApiResponse.success(res, { payment }, 'Payment rejected and buyer notified');
+    const result = await service.rejectPendingEnrollment(req.params.paymentId, req.user.id, reason);
+    ApiResponse.success(res, result, 'Enrollment rejected');
   } catch (err) { next(err); }
 }
 
 module.exports = {
   enroll, myEnrollments, listEnrollments,
   manualEnroll, courseEnrollments, revokeEnrollment,
-  recordPayment, confirmPayment, rejectPayment, listPayments,
-  paymentWebhook, listGatewayPayments, approveGatewayPayment, rejectGatewayPayment,
+  paymentWebhook,
+  listPending, approvePending, rejectPending,
 };

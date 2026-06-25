@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuthStore } from '../../../shared/stores/authStore';
 import {
   BookOpen, Plus, Trash2, GripVertical, Video, FileText, HelpCircle,
-  ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save,
+  ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save, EyeOff,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
 import { coursesApi, lessonsApi } from '../../../shared/api/courses.api';
+import { assessmentsApi } from '../../../shared/api/assessments.api';
+import { submissionsApi } from '../../../shared/api/submissions.api';
 import Spinner from '../../../shared/components/ui/spinner';
 import Button from '../../../shared/components/ui/Button';
 import Input, { Textarea, Select } from '../../../shared/components/ui/input';
@@ -27,11 +30,12 @@ export default function CourseBuilderPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEditing = !!id;
+  const isExactlyInstructor = useAuthStore(s => s.user?.role === 'instructor');
 
-  const [tab, setTab] = useState('details');
+  const [tab, setTab] = useState(isExactlyInstructor ? 'curriculum' : 'details');
   const [form, setForm] = useState({
     title: '', description: '', shortDescription: '', categoryId: '',
-    level: 'beginner', isFree: true, price: '', language: 'English',
+    level: 'beginner', language: 'English',
     tags: '', requirements: '', objectives: '',
   });
   const [sections, setSections] = useState([]);
@@ -56,8 +60,6 @@ export default function CourseBuilderPage() {
           shortDescription: c.short_description || '',
           categoryId: c.category_id || '',
           level: c.level || 'beginner',
-          isFree: c.is_free ?? true,
-          price: c.price?.toString() || '',
           language: c.language || 'English',
           tags: (c.tags || []).join(', '),
           requirements: (c.requirements || []).join(', '),
@@ -75,7 +77,7 @@ export default function CourseBuilderPage() {
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => coursesApi.categories().then(r => r.data.data || []),
+    queryFn: () => coursesApi.categories().then(r => r.data.data?.categories || []),
   });
 
   const createCourse = useMutation({
@@ -104,6 +106,7 @@ export default function CourseBuilderPage() {
       setSections(prev => [...prev, res.data.data.section]);
       setShowSectionModal(false);
       toast.success('Section added');
+      queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed'),
   });
@@ -113,8 +116,27 @@ export default function CourseBuilderPage() {
     onSuccess: () => {
       setSections(prev => prev.filter(s => s.id !== activeSectionId));
       toast.success('Section deleted');
+      queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed'),
+  });
+
+  const publishMut = useMutation({
+    mutationFn: () => api.patch(`/courses/${id}/publish`),
+    onSuccess: () => {
+      toast.success('Course published');
+      queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to publish'),
+  });
+
+  const unpublishMut = useMutation({
+    mutationFn: () => api.patch(`/courses/${id}/unpublish`),
+    onSuccess: () => {
+      toast.success('Course unpublished');
+      queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to unpublish'),
   });
 
   const thumbnailMut = useMutation({
@@ -137,13 +159,11 @@ export default function CourseBuilderPage() {
       shortDescription: form.shortDescription || undefined,
       categoryId: form.categoryId || undefined,
       level: form.level,
-      isFree: form.isFree,
       language: form.language || undefined,
       tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       requirements: form.requirements ? form.requirements.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       objectives: form.objectives ? form.objectives.split(',').map(t => t.trim()).filter(Boolean) : undefined,
     };
-    if (!form.isFree) data.price = parseFloat(form.price) || 0;
 
     if (isEditing) {
       updateCourse.mutate(data);
@@ -155,7 +175,9 @@ export default function CourseBuilderPage() {
   const handleSectionSubmit = (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    createSectionMut.mutate(Object.fromEntries(fd));
+    const data = Object.fromEntries(fd);
+    Object.keys(data).forEach(k => { if (data[k] === '') delete data[k]; });
+    createSectionMut.mutate(data);
   };
 
   if (isEditing && isLoading) {
@@ -167,25 +189,38 @@ export default function CourseBuilderPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">
-            {isEditing ? 'Edit Course' : 'Create Course'}
+            {isExactlyInstructor ? 'Manage Curriculum' : isEditing ? 'Edit Course' : 'Create Course'}
           </h1>
           {isEditing && <p className="text-gray-500 text-sm mt-1">{form.title}</p>}
         </div>
         <div className="flex items-center gap-2">
           {isEditing && (
-            <Button variant="ghost" onClick={() => navigate(`/courses/${courseData?.slug}`)}>
-              <Eye size={16} /> Preview
+            <>
+              {courseData?.status === 'published' ? (
+                <Button variant="ghost" onClick={() => unpublishMut.mutate()} loading={unpublishMut.isPending}>
+                  <EyeOff size={16} /> Unpublish
+                </Button>
+              ) : (
+                <Button variant="ghost" onClick={() => publishMut.mutate()} loading={publishMut.isPending}>
+                  <Eye size={16} /> Publish
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => navigate(`/courses/${courseData?.slug}`)}>
+                <Eye size={16} /> Preview
+              </Button>
+            </>
+          )}
+          {!isExactlyInstructor && (
+            <Button onClick={handleSaveDetails} loading={createCourse.isPending || updateCourse.isPending}>
+              <Save size={16} /> {isEditing ? 'Save' : 'Create'}
             </Button>
           )}
-          <Button onClick={handleSaveDetails} loading={createCourse.isPending || updateCourse.isPending}>
-            <Save size={16} /> {isEditing ? 'Save' : 'Create'}
-          </Button>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-gray-800 mb-6">
-        {['details', 'curriculum'].map(t => (
+        {['details', 'curriculum'].filter(t => !isExactlyInstructor || t !== 'details').map(t => (
           <button key={t}
             onClick={() => setTab(t)}
             className={clsx('px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors',
@@ -224,20 +259,6 @@ export default function CourseBuilderPage() {
               onChange={e => setForm(p => ({ ...p, level: e.target.value }))}>
               {LEVELS.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
             </Select>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.isFree}
-                onChange={e => setForm(p => ({ ...p, isFree: e.target.checked }))}
-                className="rounded border-gray-600 bg-gray-800 text-[#3B9EE8] focus:ring-[#3B9EE8]" />
-              <span className="text-sm text-gray-300">Free course</span>
-            </label>
-            {!form.isFree && (
-              <Input label="Price (NGN)" type="number" value={form.price}
-                onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-                className="w-40" placeholder="15000" />
-            )}
           </div>
 
           <Input label="Language" value={form.language}
@@ -338,13 +359,19 @@ export default function CourseBuilderPage() {
       {/* Lesson modal */}
       <LessonModal
         open={showLessonModal}
-        onClose={() => setShowLessonModal(false)}
+        onClose={() => { setShowLessonModal(false); setEditingLesson(null); }}
         courseId={id}
         sectionId={activeSectionId}
         lesson={editingLesson}
-        onSaved={() => {
-          setShowLessonModal(false);
-          queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
+        onSaved={(newLesson) => {
+          if (!editingLesson && newLesson) {
+            setEditingLesson(newLesson);
+            queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
+          } else {
+            setShowLessonModal(false);
+            setEditingLesson(null);
+            queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
+          }
         }}
       />
     </div>
@@ -390,9 +417,7 @@ function SectionCard({ section, index, courseId, isExpanded, onToggle, onDelete,
                 <span className="text-xs text-gray-600 w-5 text-right">{li + 1}.</span>
                 <LessonTypeIcon type={lesson.type} />
                 <span className="text-sm text-gray-300">{lesson.title}</span>
-                {lesson.is_free_preview && (
-                  <span className="badge badge-green text-[10px]">Preview</span>
-                )}
+
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button onClick={e => { e.stopPropagation(); onEditLesson(lesson); }}
@@ -420,10 +445,32 @@ function LessonTypeIcon({ type }) {
 function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
   const isEditing = !!lesson;
   const [form, setForm] = useState({
-    title: '', type: 'video', content: '', isFreePreview: false, durationSeconds: '',
+    title: '', type: 'video', content: '', durationSeconds: '',
   });
   const [videoFile, setVideoFile] = useState(null);
   const [resourceFile, setResourceFile] = useState(null);
+
+  // Quiz builder state
+  const [quizForm, setQuizForm] = useState({
+    title: '', description: '', passingScorePct: 70, timeLimitMins: '',
+    maxAttempts: 1, shuffleQuestions: false,
+  });
+  const [questions, setQuestions] = useState([]);
+  const [savedQuizId, setSavedQuizId] = useState(null);
+  const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [editingQ, setEditingQ] = useState(null);
+  const [questionForm, setQuestionForm] = useState({
+    type: 'multiple_choice', questionText: '', points: 1, modelAnswer: '',
+    options: [{ id: 'a', text: '', is_correct: false }, { id: 'b', text: '', is_correct: false }],
+  });
+
+  // Assignment builder state
+  const [assignForm, setAssignForm] = useState({
+    title: '', instructions: '', maxScore: 100, passingScore: 50,
+    dueDate: '', allowTextSubmission: true, allowFileSubmission: true,
+    maxFileSizeMb: 50, maxFiles: 3,
+  });
+  const [savedAssignmentId, setSavedAssignmentId] = useState(null);
 
   useEffect(() => {
     if (lesson) {
@@ -431,23 +478,68 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
         title: lesson.title || '',
         type: lesson.type || 'video',
         content: lesson.content || '',
-        isFreePreview: lesson.is_free_preview || false,
         durationSeconds: lesson.duration_seconds?.toString() || '',
       });
     } else {
-      setForm({ title: '', type: 'video', content: '', isFreePreview: false, durationSeconds: '' });
+      setForm({ title: '', type: 'video', content: '', durationSeconds: '' });
     }
     setVideoFile(null);
     setResourceFile(null);
+  }, [lesson, open]);
+
+  // Load quiz data when editing a quiz lesson
+  useEffect(() => {
+    if (isEditing && lesson?.type === 'quiz' && lesson?.quiz_id) {
+      assessmentsApi.getQuiz(lesson.quiz_id).then(r => {
+        const q = r.data.data.quiz;
+        setSavedQuizId(q.id);
+        setQuizForm({
+          title: q.title || '',
+          description: q.description || '',
+          passingScorePct: q.passing_score_pct ?? 70,
+          timeLimitMins: q.time_limit_mins?.toString() || '',
+          maxAttempts: q.max_attempts ?? 1,
+          shuffleQuestions: q.shuffle_questions ?? false,
+        });
+        setQuestions((q.questions || []).map((qst, i) => ({ ...qst, _key: i })));
+      }).catch(() => {});
+    } else if (lesson?.type !== 'quiz') {
+      setSavedQuizId(null);
+      setQuestions([]);
+    }
+  }, [lesson, open]);
+
+  // Load assignment data when editing an assignment lesson
+  useEffect(() => {
+    if (isEditing && lesson?.type === 'assignment' && lesson?.assignment_id) {
+      submissionsApi.getAssignment(lesson.assignment_id).then(r => {
+        const a = r.data.data.assignment;
+        setSavedAssignmentId(a.id);
+        setAssignForm({
+          title: a.title || '',
+          instructions: a.instructions || '',
+          maxScore: a.max_score ?? 100,
+          passingScore: a.passing_score ?? 50,
+          dueDate: a.due_date ? a.due_date.slice(0, 10) : '',
+          allowTextSubmission: a.allow_text_submission ?? true,
+          allowFileSubmission: a.allow_file_submission ?? true,
+          maxFileSizeMb: a.max_file_size_mb ?? 50,
+          maxFiles: a.max_files ?? 3,
+        });
+      }).catch(() => {});
+    } else if (lesson?.type !== 'assignment') {
+      setSavedAssignmentId(null);
+    }
   }, [lesson, open]);
 
   const saveMutation = useMutation({
     mutationFn: (data) => isEditing
       ? lessonsApi.update(courseId, lesson.id, data)
       : lessonsApi.create(courseId, { ...data, sectionId }),
-    onSuccess: () => {
+    onSuccess: (res) => {
       toast.success(isEditing ? 'Lesson updated' : 'Lesson created');
-      onSaved();
+      const newLesson = res?.data?.data?.lesson || res?.data?.lesson;
+      onSaved(newLesson);
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed'),
   });
@@ -472,13 +564,65 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
     onError: (err) => toast.error(err.response?.data?.message || 'Upload failed'),
   });
 
+  // Create/update quiz when lesson is saved
+  const saveQuizMut = useMutation({
+    mutationFn: (data) => savedQuizId
+      ? assessmentsApi.updateQuiz(savedQuizId, data)
+      : assessmentsApi.createQuiz(data),
+    onSuccess: (res) => {
+      const q = res.data.data.quiz;
+      setSavedQuizId(q.id);
+      toast.success(savedQuizId ? 'Quiz updated' : 'Quiz created');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save quiz'),
+  });
+
+  const saveQuestionMut = useMutation({
+    mutationFn: (data) => editingQ
+      ? assessmentsApi.updateQuestion(savedQuizId, editingQ.id, data)
+      : assessmentsApi.addQuestion(savedQuizId, data),
+    onSuccess: (res) => {
+      const q = res.data.data.question;
+      if (editingQ) {
+        setQuestions(prev => prev.map(x => x.id === q.id ? { ...q, _key: x._key } : x));
+      } else {
+        setQuestions(prev => [...prev, { ...q, _key: Date.now() }]);
+      }
+      setShowQuestionForm(false);
+      setEditingQ(null);
+      toast.success(editingQ ? 'Question updated' : 'Question added');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save question'),
+  });
+
+  const deleteQuestionMut = useMutation({
+    mutationFn: (qId) => assessmentsApi.deleteQuestion(savedQuizId, qId),
+    onSuccess: () => {
+      setQuestions(prev => prev.filter(x => x.id !== editingQ?.id));
+      toast.success('Question deleted');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete question'),
+  });
+
+  // Save assignment
+  const saveAssignMut = useMutation({
+    mutationFn: (data) => savedAssignmentId
+      ? submissionsApi.updateAssignment(savedAssignmentId, data)
+      : submissionsApi.createAssignment(data),
+    onSuccess: (res) => {
+      const a = res.data.data.assignment;
+      setSavedAssignmentId(a.id);
+      toast.success(savedAssignmentId ? 'Assignment updated' : 'Assignment created');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save assignment'),
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const data = {
       title: form.title,
       type: form.type,
       content: form.content || undefined,
-      isFreePreview: form.isFreePreview,
       durationSeconds: form.durationSeconds ? parseInt(form.durationSeconds, 10) : undefined,
     };
     saveMutation.mutate(data);
@@ -486,7 +630,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
 
   return (
     <Modal open={open} onClose={onClose} title={isEditing ? 'Edit Lesson' : 'Add Lesson'} size="lg">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 overflow-y-auto max-h-[70vh] pr-1">
         <Input label="Lesson title" value={form.title}
           onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
           required placeholder="e.g. Introduction to HTML" />
@@ -509,13 +653,6 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
           onChange={e => setForm(p => ({ ...p, durationSeconds: e.target.value }))}
           placeholder="e.g. 600" />
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={form.isFreePreview}
-            onChange={e => setForm(p => ({ ...p, isFreePreview: e.target.checked }))}
-            className="rounded border-gray-600 bg-gray-800 text-[#3B9EE8] focus:ring-[#3B9EE8]" />
-          <span className="text-sm text-gray-300">Free preview (non-enrolled users can watch)</span>
-        </label>
-
         {isEditing && form.type === 'video' && (
           <div>
             <label className="text-sm font-medium text-gray-300 mb-1.5 block">Video upload</label>
@@ -535,6 +672,190 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
             {resourceMut.isPending && <Spinner size="sm" />}
           </div>
         )}
+
+        {/* ── Quiz Builder ── */}
+        {isEditing && form.type === 'quiz' && (
+          <div className="border-t border-gray-800 pt-4 mt-2 space-y-4">
+            <h3 className="font-semibold text-white text-lg">Quiz Settings</h3>
+            <Input label="Quiz title" value={quizForm.title}
+              onChange={e => setQuizForm(p => ({ ...p, title: e.target.value }))} />
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Description</label>
+              <textarea value={quizForm.description}
+                onChange={e => setQuizForm(p => ({ ...p, description: e.target.value }))}
+                rows={2} className="input resize-none" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <Input label="Passing score (%)" type="number" value={quizForm.passingScorePct}
+                onChange={e => setQuizForm(p => ({ ...p, passingScorePct: +e.target.value }))} />
+              <Input label="Time limit (min)" type="number" value={quizForm.timeLimitMins}
+                onChange={e => setQuizForm(p => ({ ...p, timeLimitMins: e.target.value }))} />
+              <Input label="Max attempts" type="number" value={quizForm.maxAttempts}
+                onChange={e => setQuizForm(p => ({ ...p, maxAttempts: +e.target.value }))} />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={quizForm.shuffleQuestions}
+                onChange={e => setQuizForm(p => ({ ...p, shuffleQuestions: e.target.checked }))} />
+              Shuffle questions
+            </label>
+            <div className="flex justify-end">
+              <Button onClick={() => {
+                saveQuizMut.mutate({ lessonId: lesson.id, courseId, ...quizForm, timeLimitMins: quizForm.timeLimitMins ? parseInt(quizForm.timeLimitMins) : null });
+              }} loading={saveQuizMut.isPending}><Save size={14} /> Save Quiz</Button>
+            </div>
+
+            {/* Questions */}
+            <div className="border-t border-gray-800 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-white">Questions ({questions.length})</h4>
+                <Button variant="secondary" size="sm" onClick={() => {
+                  setEditingQ(null);
+                  setQuestionForm({ type: 'multiple_choice', questionText: '', points: 1, modelAnswer: '', options: [
+                    { id: 'a', text: '', is_correct: false }, { id: 'b', text: '', is_correct: false },
+                  ]});
+                  setShowQuestionForm(true);
+                }}><Plus size={14} /> Add Question</Button>
+              </div>
+              {questions.map((q, i) => (
+                <div key={q._key ?? q.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/[0.02] group">
+                  <div className="text-sm text-gray-300">
+                    <span className="text-gray-600 mr-2">{i + 1}.</span>
+                    <span>{q.question_text}</span>
+                    <span className="text-xs text-gray-600 ml-2">({q.type} · {q.points}pt)</span>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                    <button className="btn-ghost p-1 rounded text-xs" onClick={() => {
+                      setEditingQ(q);
+                      setQuestionForm({
+                        type: q.type, questionText: q.question_text, points: q.points,
+                        modelAnswer: q.model_answer || '',
+                        options: (q.options || []).map(o => ({ ...o })),
+                      });
+                      setShowQuestionForm(true);
+                    }}>Edit</button>
+                    <button className="btn-ghost p-1 rounded text-xs text-red-400" onClick={() => {
+                      setEditingQ(q);
+                      deleteQuestionMut.mutate(q.id);
+                    }}>Del</button>
+                  </div>
+                </div>
+              ))}
+              {questions.length === 0 && <p className="text-gray-600 text-sm">No questions yet</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── Assignment Builder ── */}
+        {isEditing && form.type === 'assignment' && (
+          <div className="border-t border-gray-800 pt-4 mt-2 space-y-4">
+            <h3 className="font-semibold text-white text-lg">Assignment Settings</h3>
+            <Input label="Assignment title" value={assignForm.title}
+              onChange={e => setAssignForm(p => ({ ...p, title: e.target.value }))} />
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Instructions</label>
+              <textarea value={assignForm.instructions}
+                onChange={e => setAssignForm(p => ({ ...p, instructions: e.target.value }))}
+                rows={4} className="input resize-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Max score" type="number" value={assignForm.maxScore}
+                onChange={e => setAssignForm(p => ({ ...p, maxScore: +e.target.value }))} />
+              <Input label="Passing score" type="number" value={assignForm.passingScore}
+                onChange={e => setAssignForm(p => ({ ...p, passingScore: +e.target.value }))} />
+            </div>
+            <Input label="Due date" type="date" value={assignForm.dueDate}
+              onChange={e => setAssignForm(p => ({ ...p, dueDate: e.target.value }))} />
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input type="checkbox" checked={assignForm.allowTextSubmission}
+                  onChange={e => setAssignForm(p => ({ ...p, allowTextSubmission: e.target.checked }))} />
+                Text submission
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input type="checkbox" checked={assignForm.allowFileSubmission}
+                  onChange={e => setAssignForm(p => ({ ...p, allowFileSubmission: e.target.checked }))} />
+                File submission
+              </label>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => {
+                saveAssignMut.mutate({ lessonId: lesson.id, courseId, ...assignForm, dueDate: assignForm.dueDate || null });
+              }} loading={saveAssignMut.isPending}><Save size={14} /> Save Assignment</Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Question Form Modal ── */}
+        <Modal open={showQuestionForm} onClose={() => { setShowQuestionForm(false); setEditingQ(null); }}
+          title={editingQ ? 'Edit Question' : 'Add Question'} size="md">
+          <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh] pr-1">
+            <Select label="Type" value={questionForm.type}
+              onChange={e => setQuestionForm(p => ({ ...p, type: e.target.value }))}>
+              <option value="multiple_choice">Multiple Choice</option>
+              <option value="multi_select">Multi Select</option>
+              <option value="true_false">True / False</option>
+              <option value="short_answer">Short Answer</option>
+            </Select>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Question</label>
+              <textarea value={questionForm.questionText}
+                onChange={e => setQuestionForm(p => ({ ...p, questionText: e.target.value }))}
+                rows={2} className="input resize-none" />
+            </div>
+            <Input label="Points" type="number" value={questionForm.points}
+              onChange={e => setQuestionForm(p => ({ ...p, points: +e.target.value }))} />
+            {questionForm.type !== 'short_answer' && (
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Options</label>
+                {questionForm.options.map((opt, i) => (
+                  <div key={opt.id} className="flex items-center gap-2 mb-2">
+                    <input type={questionForm.type === 'multiple_choice' ? 'radio' : 'checkbox'}
+                      name="correctOpt" checked={opt.is_correct}
+                      onChange={() => {
+                        const newOpts = questionForm.options.map(o => ({
+                          ...o, is_correct: questionForm.type === 'multiple_choice' ? o.id === opt.id : questionForm.type === 'multi_select' ? (o.id === opt.id ? !o.is_correct : o.is_correct) : o.is_correct,
+                        }));
+                        setQuestionForm(p => ({ ...p, options: newOpts }));
+                      }} className="mr-1" />
+                    <input className="input flex-1 text-sm" value={opt.text}
+                      onChange={e => {
+                        const newOpts = questionForm.options.map(o => o.id === opt.id ? { ...o, text: e.target.value } : o);
+                        setQuestionForm(p => ({ ...p, options: newOpts }));
+                      }} placeholder={`Option ${i + 1}`} />
+                    {questionForm.options.length > 2 && (
+                      <button className="text-red-400 text-xs"
+                        onClick={() => setQuestionForm(p => ({ ...p, options: p.options.filter(o => o.id !== opt.id) }))}>
+                        X
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button className="text-xs text-[#3B9EE8] mt-1"
+                  onClick={() => {
+                    const newId = String.fromCharCode(97 + questionForm.options.length);
+                    setQuestionForm(p => ({ ...p, options: [...p.options, { id: newId, text: '', is_correct: false }] }));
+                  }}>
+                  + Add option
+                </button>
+              </div>
+            )}
+            {questionForm.type === 'short_answer' && (
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Model answer (optional)</label>
+                <textarea value={questionForm.modelAnswer}
+                  onChange={e => setQuestionForm(p => ({ ...p, modelAnswer: e.target.value }))}
+                  rows={2} className="input resize-none" />
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
+              <Button variant="secondary" type="button" onClick={() => { setShowQuestionForm(false); setEditingQ(null); }}>Cancel</Button>
+              <Button onClick={() => {
+                if (!savedQuizId) { toast.error('Save the quiz first'); return; }
+                saveQuestionMut.mutate(questionForm);
+              }} loading={saveQuestionMut.isPending}>{editingQ ? 'Update' : 'Add'}</Button>
+            </div>
+          </div>
+        </Modal>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>

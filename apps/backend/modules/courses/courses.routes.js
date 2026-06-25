@@ -7,6 +7,7 @@ const router       = express.Router();
 
 const controller   = require('./courses.controller');
 const authenticate = require('../../shared/middleware/authenticate');
+const optionalAuth = require('../../shared/middleware/optionalAuth');
 const authorize    = require('../../shared/middleware/authorize');
 const storage      = require('../../config/storage');
 
@@ -28,18 +29,18 @@ router.get('/my-courses',
   controller.getMyCourses
 );
 
-router.get('/:slug', controller.getCourse);
+router.get('/:slug', optionalAuth, controller.getCourse);
 
 // ── Protected routes ─────────────────────────
 router.use(authenticate);
 
 // Instructor / Admin — course management
 router.post('/',
-  authorize('instructor', 'admin'),
+  authorize('admin'),
   controller.createCourse);
 
 router.patch('/:id',
-  authorize('instructor', 'admin'),
+  authorize('admin'),
   controller.updateCourse);
 
 router.patch('/:id/publish',

@@ -42,7 +42,7 @@ async function updateCourseMeta(courseId, client = db) {
     `UPDATE courses SET
        lesson_count = (
          SELECT COUNT(*) FROM lessons
-         WHERE course_id = $1 AND deleted_at IS NULL AND is_published = true
+         WHERE course_id = $1 AND deleted_at IS NULL
        ),
        duration_seconds = (
          SELECT COALESCE(SUM(duration_seconds), 0) FROM lessons
@@ -74,8 +74,8 @@ async function createLesson(courseId, sectionId, data, requestingUser) {
   const { rows } = await db.query(
     `INSERT INTO lessons
        (section_id, course_id, title, type, content, duration_seconds,
-        sort_order, is_free_preview, is_published)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        sort_order, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *`,
     [
       sectionId,
@@ -85,7 +85,6 @@ async function createLesson(courseId, sectionId, data, requestingUser) {
       data.content || null,
       data.durationSeconds || 0,
       orderRows[0].next,
-      data.isFreePreview || false,
       data.isPublished || false,
     ]
   );
@@ -121,10 +120,6 @@ async function getLesson(lessonId, courseId, requestingUser) {
     throw ApiError.notFound('Lesson not found');
   }
 
-  if (lesson.is_free_preview) {
-    return lesson;
-  }
-
   const enrolled = await verifyEnrollment(requestingUser.id, courseId);
   if (!enrolled) {
     const isOwner = requestingUser.role === 'admin' || requestingUser.role === 'super_admin' ||
@@ -141,14 +136,14 @@ async function getLesson(lessonId, courseId, requestingUser) {
   return lesson;
 }
 
-// ── Get lesson preview (public, free preview only) ─
+// ── Get lesson preview (public, published-only) ─
 async function getPreview(lessonId, courseId) {
   const { rows } = await db.query(
-    `SELECT l.id, l.title, l.type, l.duration_seconds, l.is_free_preview,
+    `SELECT l.id, l.title, l.type, l.duration_seconds,
             f.storage_path AS video_path
      FROM lessons l
      LEFT JOIN files f ON f.id = l.video_file_id
-     WHERE l.id = $1 AND l.course_id = $2 AND l.is_free_preview = true
+     WHERE l.id = $1 AND l.course_id = $2
        AND l.is_published = true AND l.deleted_at IS NULL`,
     [lessonId, courseId]
   );
@@ -167,16 +162,14 @@ async function updateLesson(lessonId, courseId, updates, requestingUser) {
        title = COALESCE($1, title),
        content = COALESCE($2, content),
        duration_seconds = COALESCE($3, duration_seconds),
-       is_free_preview = COALESCE($4, is_free_preview),
-       is_published = COALESCE($5, is_published),
+       is_published = COALESCE($4, is_published),
        updated_at = NOW()
-     WHERE id = $6 AND course_id = $7 AND deleted_at IS NULL
+     WHERE id = $5 AND course_id = $6 AND deleted_at IS NULL
      RETURNING *`,
     [
       updates.title,
       updates.content,
       updates.durationSeconds,
-      updates.isFreePreview,
       updates.isPublished,
       lessonId,
       courseId,

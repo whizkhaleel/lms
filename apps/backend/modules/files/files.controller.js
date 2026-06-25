@@ -14,6 +14,8 @@ async function upload(req, res, next) {
     if (!context) throw ApiError.badRequest('File context is required (e.g. lesson_video, avatar)');
     if (!ownerId) throw ApiError.badRequest('ownerId is required');
 
+    await service.verifyFileContextOwner(context, ownerId, req.user);
+
     const file = await service.saveFile({
       uploadedFile: req.file,
       context,
@@ -37,9 +39,9 @@ async function upload(req, res, next) {
 // This endpoint handles auth-gated private files.
 async function serve(req, res, next) {
   try {
-    const { absPath, mimeType } = await service.getFilePath(req.params.id);
+    await service.verifyFileAccess(req.params.id, req.user);
 
-    // Optional: add access control checks here (e.g. enrollment check)
+    const { absPath, mimeType } = await service.getFilePath(req.params.id);
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -58,7 +60,7 @@ async function serve(req, res, next) {
 // Soft delete
 async function remove(req, res, next) {
   try {
-    await service.deleteFile(req.params.id, req.user.id);
+    await service.deleteFile(req.params.id, req.user.id, req.user);
     ApiResponse.success(res, {}, 'File deleted');
   } catch (err) {
     next(err);

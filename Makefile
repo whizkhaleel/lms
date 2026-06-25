@@ -128,6 +128,11 @@ seed:
 	$(COMPOSE) exec backend node /app/database/migrate.js --seed
 	@echo "Seeds complete."
 
+seed-demo:
+	@echo "Seeding demo data..."
+	$(COMPOSE) exec -T postgres psql -U lms_user -d lms < database/seeds/002_demo_data.sql
+	@echo "Demo data seeded."
+
 migrate-reset:
 	@echo "Resetting database..."
 	$(COMPOSE) exec backend node /app/database/migrate.js --reset --seed

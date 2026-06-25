@@ -12,7 +12,6 @@ export default function CourseCatalogPage() {
   const category = params.get('category') || '';
   const level    = params.get('level')    || '';
   const sort     = params.get('sort')     || 'newest';
-  const isFree   = params.get('isFree')   || '';
   const page     = parseInt(params.get('page') || '1', 10);
 
   const set = (key, val) => {
@@ -29,8 +28,8 @@ export default function CourseCatalogPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['courses', { search, category, level, sort, isFree, page }],
-    queryFn:  () => coursesApi.list({ search, category, level, sort, isFree, page, limit: 12 }),
+    queryKey: ['courses', { search, category, level, sort, page }],
+    queryFn:  () => coursesApi.list({ search, category, level, sort, page, limit: 12 }),
     select:   r => r.data,
   });
 
@@ -69,11 +68,7 @@ export default function CourseCatalogPage() {
           <option value="intermediate">Intermediate</option>
           <option value="advanced">Advanced</option>
         </select>
-        <select className="input w-auto" value={isFree} onChange={e => set('isFree', e.target.value)}>
-          <option value="">All prices</option>
-          <option value="true">Free only</option>
-          <option value="false">Paid only</option>
-        </select>
+
       </div>
 
       <div className="flex gap-6">
@@ -171,12 +166,7 @@ function CourseCard({ course }) {
           <div className="w-full h-full flex items-center justify-center text-5xl">📚</div>
         )}
         <div className="absolute top-2 left-2">
-          {course.is_free
-            ? <span className="badge-green badge">Free</span>
-            : <span className="badge-blue badge">
-                {course.currency || 'NGN'} {parseFloat(course.price || 0).toLocaleString()}
-              </span>
-          }
+          <span className="badge-green badge">Available</span>
         </div>
         <div className="absolute top-2 right-2">
           <span className="badge-gray badge capitalize">{course.level}</span>

@@ -45,6 +45,86 @@ const CONTEXT_DIRS = {
 };
 
 /**
+ * Verify the requesting user owns the entity associated with a file context.
+ * Used by the generic file upload endpoint to prevent cross-entity file uploads.
+ */
+async function verifyFileContextOwner(context, ownerId, requestingUser) {
+  if (context === 'lesson_video' || context === 'lesson_resource') {
+    const { rows } = await db.query(
+      `SELECT c.instructor_id
+       FROM lessons l
+       JOIN courses c ON c.id = l.course_id
+       WHERE l.id = $1 AND l.deleted_at IS NULL AND c.deleted_at IS NULL`,
+      [ownerId]
+    );
+    if (!rows[0]) throw ApiError.notFound('Lesson not found');
+    if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin'
+        && rows[0].instructor_id !== requestingUser.id) {
+      throw ApiError.forbidden('You do not have permission to upload files to this lesson');
+    }
+  } else if (context === 'course_thumbnail') {
+    const { rows } = await db.query(
+      'SELECT instructor_id FROM courses WHERE id = $1 AND deleted_at IS NULL',
+      [ownerId]
+    );
+    if (!rows[0]) throw ApiError.notFound('Course not found');
+    if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin'
+        && rows[0].instructor_id !== requestingUser.id) {
+      throw ApiError.forbidden('You do not have permission to upload a thumbnail for this course');
+    }
+  } else if (context === 'avatar') {
+    if (requestingUser.id !== ownerId
+        && requestingUser.role !== 'admin'
+        && requestingUser.role !== 'super_admin') {
+      throw ApiError.forbidden('You can only upload your own avatar');
+    }
+  }
+  // assignment_submission — handled by the assignment submission route
+}
+
+/**
+ * Verify the requesting user has access to a file.
+ * Public files are always accessible; private files require enrollment or ownership.
+ */
+async function verifyFileAccess(fileId, requestingUser) {
+  const { rows } = await db.query(
+    'SELECT context, owner_id, is_public, uploaded_by, deleted_at FROM files WHERE id = $1',
+    [fileId]
+  );
+  const file = rows[0];
+  if (!file || file.deleted_at) throw ApiError.notFound('File not found');
+
+  if (file.is_public) return;
+
+  if (requestingUser.role === 'admin' || requestingUser.role === 'super_admin') return;
+
+  if (file.uploaded_by === requestingUser.id) return;
+
+  if (file.context === 'lesson_video' || file.context === 'lesson_resource') {
+    const { rows: enrRows } = await db.query(
+      `SELECT e.id FROM enrollments e
+       JOIN lessons l ON l.course_id = e.course_id
+       WHERE l.id = $1 AND e.user_id = $2 AND e.status = 'active'`,
+      [file.owner_id, requestingUser.id]
+    );
+    if (enrRows.length > 0) return;
+
+    const { rows: courseRows } = await db.query(
+      `SELECT c.instructor_id
+       FROM lessons l
+       JOIN courses c ON c.id = l.course_id
+       WHERE l.id = $1`,
+      [file.owner_id]
+    );
+    if (courseRows.length > 0 && courseRows[0].instructor_id === requestingUser.id) return;
+  }
+
+  if (file.context === 'avatar' && file.owner_id === requestingUser.id) return;
+
+  throw ApiError.forbidden('You do not have access to this file');
+}
+
+/**
  * Compute SHA-256 hash of a file on disk.
  */
 function hashFile(filePath) {
@@ -59,13 +139,6 @@ function hashFile(filePath) {
 
 /**
  * Move a file from temp/ to its permanent location inside lmsdata/.
- *
- * @param {Object} uploadedFile - Multer file object from temp/
- * @param {string} context - e.g. 'lesson_video', 'course_thumbnail'
- * @param {string} ownerId - ID of the entity this file belongs to (courseId, lessonId, etc.)
- * @param {string} uploadedBy - user.id of the uploader
- * @param {boolean} isPublic - Whether Nginx can serve this directly
- * @returns {Object} - Saved file record from DB
  */
 async function saveFile({ uploadedFile, context, ownerId, uploadedBy, isPublic = false }) {
   // 1. Validate context
@@ -167,14 +240,24 @@ async function getFilePath(fileId) {
  * Soft-delete a file record.
  * Actual file removal is handled by a background cleanup worker.
  */
-async function deleteFile(fileId, deletedBy) {
+async function deleteFile(fileId, deletedBy, requestingUser) {
   const { rows } = await db.query(
+    'SELECT uploaded_by FROM files WHERE id = $1 AND deleted_at IS NULL',
+    [fileId]
+  );
+  if (!rows[0]) throw ApiError.notFound('File not found');
+
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin'
+      && rows[0].uploaded_by !== requestingUser.id) {
+    throw ApiError.forbidden('You do not have permission to delete this file');
+  }
+
+  await db.query(
     `UPDATE files SET deleted_at = NOW()
      WHERE id = $1 AND deleted_at IS NULL
      RETURNING id`,
     [fileId]
   );
-  if (!rows[0]) throw ApiError.notFound('File not found');
 
   await db.query(
     `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id)
@@ -183,4 +266,4 @@ async function deleteFile(fileId, deletedBy) {
   );
 }
 
-module.exports = { saveFile, getFilePath, deleteFile, ALLOWED_TYPES, MAX_SIZES };
+module.exports = { saveFile, getFilePath, deleteFile, verifyFileContextOwner, verifyFileAccess, ALLOWED_TYPES, MAX_SIZES };

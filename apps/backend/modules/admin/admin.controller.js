@@ -15,7 +15,12 @@ async function auditLogs(req, res, next) {
   try {
     const { page = 1, limit = 50, action, entityType, actorId } = req.query;
     const result = await service.listAuditLogs({ page: +page, limit: +limit, action, entityType, actorId });
-    ApiResponse.paginated(res, result.rows, result.total, +page, +limit);
+    ApiResponse.paginated(res, result.rows, {
+      total: result.total, page: +page, limit: +limit,
+      totalPages: Math.ceil(result.total / +limit),
+      hasNext: (+page * +limit) < result.total,
+      hasPrev: +page > 1,
+    });
   } catch (err) { next(err); }
 }
 

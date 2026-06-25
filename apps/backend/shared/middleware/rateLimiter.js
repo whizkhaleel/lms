@@ -3,7 +3,7 @@
 const rateLimit = require('express-rate-limit');
 const env       = require('../../config/env');
 
-// General API rate limiter
+// General API rate limiter (applied to admin routes)
 const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max:      env.RATE_LIMIT_MAX_REQUESTS,

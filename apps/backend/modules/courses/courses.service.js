@@ -1,9 +1,13 @@
 'use strict';
 
-const db         = require('../../config/db');
-const ApiError   = require('../../shared/utils/apiError');
-const eventBus   = require('../../shared/events/eventBus');
+const db        = require('../../config/db');
+const ApiError  = require('../../shared/utils/apiError');
+const eventBus  = require('../../shared/events/eventBus');
+const cache     = require('../../shared/utils/cache');
+const adminService = require('../admin/admin.service');
 const fileService = require('../files/files.service');
+
+const COURSE_LIST_CACHE_TTL = 120; // 2 minutes
 
 // ── Slug generator ────────────────────────────
 function slugify(text) {
@@ -33,67 +37,70 @@ async function uniqueSlug(title, excludeId = null) {
 }
 
 // ── List published courses (public catalog) ───
-async function listCourses({ page = 1, limit = 20, category, search, level, isFree, sort = 'newest' }) {
-  const offset = (page - 1) * limit;
-  const conditions = ["c.status = 'published'", 'c.deleted_at IS NULL'];
-  const params     = [];
-  let   i          = 1;
+async function listCourses({ page = 1, limit = 20, category, search, level, sort = 'newest' }) {
+  const parts = [`page=${page}`, `limit=${limit}`];
+  if (category) parts.push(`cat=${category}`);
+  if (search)   parts.push(`q=${search}`);
+  if (level)    parts.push(`lvl=${level}`);
+  parts.push(`sort=${sort}`);
+  const cacheKey = `courses:list:${parts.join(':')}`;
 
-  if (category) {
-    conditions.push(`cat.slug = $${i++}`);
-    params.push(category);
-  }
-  if (level) {
-    conditions.push(`c.level = $${i++}`);
-    params.push(level);
-  }
-  if (isFree !== undefined) {
-    conditions.push(`c.is_free = $${i++}`);
-    params.push(isFree === 'true');
-  }
-  if (search) {
-    conditions.push(`to_tsvector('english', c.title || ' ' || COALESCE(c.description,'')) @@ plainto_tsquery('english', $${i++})`);
-    params.push(search);
-  }
+  return cache.getOrSet(cacheKey, async () => {
+    const offset = (page - 1) * limit;
+    const conditions = ["c.status = 'published'", 'c.deleted_at IS NULL'];
+    const params     = [];
+    let   i          = 1;
 
-  const where   = 'WHERE ' + conditions.join(' AND ');
-  const orderBy = sort === 'popular'  ? 'c.student_count DESC'
-                : sort === 'rating'   ? 'c.rating_average DESC'
-                : sort === 'price_asc' ? 'c.price ASC'
-                : 'c.published_at DESC';
+    if (category) {
+      conditions.push(`cat.slug = $${i++}`);
+      params.push(category);
+    }
+    if (level) {
+      conditions.push(`c.level = $${i++}`);
+      params.push(level);
+    }
+    if (search) {
+      conditions.push(`to_tsvector('english', c.title || ' ' || COALESCE(c.description,'')) @@ plainto_tsquery('english', $${i++})`);
+      params.push(search);
+    }
 
-  const [countRes, coursesRes] = await Promise.all([
-    db.query(
-      `SELECT COUNT(*) FROM courses c
-       LEFT JOIN categories cat ON cat.id = c.category_id
-       ${where}`,
-      params
-    ),
-    db.query(
-      `SELECT c.id, c.title, c.slug, c.short_description,
-              c.is_free, c.price, c.discount_price, c.level,
-              c.duration_seconds, c.lesson_count, c.student_count,
-              c.rating_average, c.rating_count, c.published_at,
-              u.first_name || ' ' || u.last_name AS instructor_name,
-              cat.name AS category_name,
-              f.storage_path AS thumbnail_path
-       FROM courses c
-       JOIN users u ON u.id = c.instructor_id
-       LEFT JOIN categories cat ON cat.id = c.category_id
-       LEFT JOIN files f ON f.id = c.thumbnail_file_id
-       ${where}
-       ORDER BY ${orderBy}
-       LIMIT $${i} OFFSET $${i + 1}`,
-      [...params, limit, offset]
-    ),
-  ]);
+    const where   = 'WHERE ' + conditions.join(' AND ');
+    const orderBy = sort === 'popular'  ? 'c.student_count DESC'
+                  : sort === 'rating'   ? 'c.rating_average DESC'
+                  : 'c.published_at DESC';
 
-  return {
-    courses: coursesRes.rows,
-    total:   parseInt(countRes.rows[0].count, 10),
-    page:    parseInt(page, 10),
-    limit:   parseInt(limit, 10),
-  };
+    const [countRes, coursesRes] = await Promise.all([
+      db.query(
+        `SELECT COUNT(*) FROM courses c
+         LEFT JOIN categories cat ON cat.id = c.category_id
+         ${where}`,
+        params
+      ),
+      db.query(
+        `SELECT c.id, c.title, c.slug, c.short_description,
+                c.level, c.duration_seconds, c.lesson_count, c.student_count,
+                c.rating_average, c.rating_count, c.published_at,
+                u.first_name || ' ' || u.last_name AS instructor_name,
+                cat.name AS category_name,
+                f.storage_path AS thumbnail_path
+         FROM courses c
+         JOIN users u ON u.id = c.instructor_id
+         LEFT JOIN categories cat ON cat.id = c.category_id
+         LEFT JOIN files f ON f.id = c.thumbnail_file_id
+         ${where}
+         ORDER BY ${orderBy}
+         LIMIT $${i} OFFSET $${i + 1}`,
+        [...params, limit, offset]
+      ),
+    ]);
+
+    return {
+      courses: coursesRes.rows,
+      total:   parseInt(countRes.rows[0].count, 10),
+      page:    parseInt(page, 10),
+      limit:   parseInt(limit, 10),
+    };
+  }, COURSE_LIST_CACHE_TTL);
 }
 
 // ── Get single course (with full structure) ───
@@ -121,7 +128,7 @@ async function getCourse(slug, requestingUserId = null) {
     if (!isOwner) throw ApiError.notFound('Course not found');
   }
 
-  // Fetch sections with lessons
+  // Fetch sections with lessons (include quiz/assignment IDs)
   const { rows: sections } = await db.query(
     `SELECT s.id, s.title, s.description, s.sort_order,
             json_agg(
@@ -130,13 +137,16 @@ async function getCourse(slug, requestingUserId = null) {
                 'title',           l.title,
                 'type',            l.type,
                 'duration_seconds',l.duration_seconds,
-                'is_free_preview', l.is_free_preview,
                 'sort_order',      l.sort_order,
-                'is_published',    l.is_published
+                'is_published',    l.is_published,
+                'quiz_id',         qz.id,
+                'assignment_id',   asn.id
               ) ORDER BY l.sort_order
             ) FILTER (WHERE l.id IS NOT NULL) AS lessons
      FROM sections s
      LEFT JOIN lessons l ON l.section_id = s.id AND l.deleted_at IS NULL
+     LEFT JOIN quizzes qz ON qz.lesson_id = l.id
+     LEFT JOIN assignments asn ON asn.lesson_id = l.id
      WHERE s.course_id = $1
      GROUP BY s.id
      ORDER BY s.sort_order`,
@@ -158,21 +168,19 @@ async function getCourse(slug, requestingUserId = null) {
 
 // ── Create course ─────────────────────────────
 async function createCourse({ title, description, shortDescription, categoryId,
-  isFree, price, level, language, tags, requirements, objectives, instructorId }) {
+  level, language, tags, requirements, objectives, instructorId }) {
 
   const slug = await uniqueSlug(title);
 
   const { rows } = await db.query(
     `INSERT INTO courses
        (title, slug, description, short_description, category_id,
-        is_free, price, level, language, tags, requirements, objectives,
+        level, language, tags, requirements, objectives,
         instructor_id, status)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft')
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft')
      RETURNING *`,
     [
       title, slug, description, shortDescription, categoryId,
-      isFree ?? false,
-      isFree ? 0 : (price ?? 0),
       level ?? 'beginner',
       language ?? 'English',
       tags       ? `{${tags.join(',')}}` : '{}',
@@ -201,8 +209,7 @@ async function updateCourse(courseId, updates, requestingUser) {
   const course = rows[0];
   if (!course) throw ApiError.notFound('Course not found');
 
-  // Only instructor who owns it or admin can update
-  if (requestingUser.role !== 'admin' && course.instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && course.instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to update this course');
   }
 
@@ -217,20 +224,17 @@ async function updateCourse(courseId, updates, requestingUser) {
        description       = COALESCE($3,  description),
        short_description = COALESCE($4,  short_description),
        category_id       = COALESCE($5,  category_id),
-       is_free           = COALESCE($6,  is_free),
-       price             = COALESCE($7,  price),
-       discount_price    = COALESCE($8,  discount_price),
-       level             = COALESCE($9,  level),
-       language          = COALESCE($10, language),
-       tags              = COALESCE($11, tags),
-       requirements      = COALESCE($12, requirements),
-       objectives        = COALESCE($13, objectives),
+       level             = COALESCE($6,  level),
+       language          = COALESCE($7,  language),
+       tags              = COALESCE($8,  tags),
+       requirements      = COALESCE($9,  requirements),
+       objectives        = COALESCE($10, objectives),
        updated_at        = NOW()
-     WHERE id = $14
+     WHERE id = $11
      RETURNING *`,
     [
       updates.title, slug, updates.description, updates.shortDescription,
-      updates.categoryId, updates.isFree, updates.price, updates.discountPrice,
+      updates.categoryId,
       updates.level, updates.language,
       updates.tags         ? `{${updates.tags.join(',')}}` : null,
       updates.requirements ? `{${updates.requirements.map(r => `"${r}"`).join(',')}}` : null,
@@ -238,6 +242,8 @@ async function updateCourse(courseId, updates, requestingUser) {
       courseId,
     ]
   );
+
+  eventBus.emit('course.updated', { courseId, instructorId: requestingUser.id });
   return updated[0];
 }
 
@@ -249,7 +255,7 @@ async function publishCourse(courseId, requestingUser) {
   );
   const course = rows[0];
   if (!course) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && course.instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && course.instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to publish this course');
   }
   if (course.lesson_count === 0) {
@@ -280,7 +286,7 @@ async function unpublishCourse(courseId, requestingUser) {
   );
   const course = rows[0];
   if (!course) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && course.instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && course.instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to unpublish this course');
   }
 
@@ -300,7 +306,7 @@ async function deleteCourse(courseId, requestingUser) {
   );
   const course = rows[0];
   if (!course) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && course.instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && course.instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to delete this course');
   }
 
@@ -308,22 +314,29 @@ async function deleteCourse(courseId, requestingUser) {
     'UPDATE courses SET deleted_at = NOW() WHERE id = $1',
     [courseId]
   );
+
+  eventBus.emit('course.deleted', { courseId, instructorId: requestingUser.id });
 }
 
 // ── Upload thumbnail ──────────────────────────
-async function uploadThumbnail(courseId, uploadedFile, uploadedBy) {
+async function uploadThumbnail(courseId, uploadedFile, uploadedBy, requestingUser) {
   const { rows } = await db.query(
     'SELECT id, instructor_id FROM courses WHERE id = $1 AND deleted_at IS NULL',
     [courseId]
   );
-  if (!rows[0]) throw ApiError.notFound('Course not found');
+  const course = rows[0];
+  if (!course) throw ApiError.notFound('Course not found');
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin'
+      && course.instructor_id !== requestingUser.id) {
+    throw ApiError.forbidden('You do not have permission to upload a thumbnail for this course');
+  }
 
   const file = await fileService.saveFile({
     uploadedFile,
     context:    'course_thumbnail',
     ownerId:    courseId,
     uploadedBy,
-    isPublic:   true,   // thumbnails served directly by Nginx
+    isPublic:   true,
   });
 
   await db.query(
@@ -348,11 +361,10 @@ async function createSection(courseId, { title, description }, requestingUser) {
     [courseId]
   );
   if (!courseRows[0]) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && courseRows[0].instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && courseRows[0].instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to modify this course');
   }
 
-  // Get next sort order
   const { rows: orderRows } = await db.query(
     'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM sections WHERE course_id = $1',
     [courseId]
@@ -373,7 +385,7 @@ async function updateSection(courseId, sectionId, updates, requestingUser) {
     [courseId]
   );
   if (!courseRows[0]) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && courseRows[0].instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && courseRows[0].instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to modify this course');
   }
 
@@ -397,7 +409,7 @@ async function deleteSection(courseId, sectionId, requestingUser) {
     [courseId]
   );
   if (!courseRows[0]) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && courseRows[0].instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && courseRows[0].instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to modify this course');
   }
 
@@ -415,7 +427,7 @@ async function reorderSections(courseId, orderedIds, requestingUser) {
     [courseId]
   );
   if (!courseRows[0]) throw ApiError.notFound('Course not found');
-  if (requestingUser.role !== 'admin' && courseRows[0].instructor_id !== requestingUser.id) {
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && courseRows[0].instructor_id !== requestingUser.id) {
     throw ApiError.forbidden('You do not have permission to modify this course');
   }
 
@@ -432,7 +444,7 @@ async function reorderSections(courseId, orderedIds, requestingUser) {
 // ── Instructor: My Courses ────────────────────
 async function getMyCourses(instructorId) {
   const { rows } = await db.query(
-    `SELECT c.id, c.title, c.slug, c.status, c.is_free, c.price,
+    `SELECT c.id, c.title, c.slug, c.status,
             c.lesson_count, c.student_count, c.rating_average,
             c.created_at, c.published_at,
             f.storage_path AS thumbnail_path
@@ -446,9 +458,6 @@ async function getMyCourses(instructorId) {
 }
 
 // ── Admin: list ALL courses regardless of status ──
-// Unlike listCourses() (the public catalog, published-only),
-// this is for the admin course-management screen and includes
-// drafts, under-review, and archived courses too.
 async function getAllCoursesForAdmin({ status, search } = {}) {
   const conditions = ['c.deleted_at IS NULL'];
   const params      = [];
@@ -466,7 +475,7 @@ async function getAllCoursesForAdmin({ status, search } = {}) {
   const where = 'WHERE ' + conditions.join(' AND ');
 
   const { rows } = await db.query(
-    `SELECT c.id, c.title, c.slug, c.status, c.is_free, c.price,
+    `SELECT c.id, c.title, c.slug, c.status,
             c.lesson_count, c.student_count, c.rating_average,
             c.created_at, c.published_at,
             u.first_name || ' ' || u.last_name AS instructor_name,
@@ -481,10 +490,16 @@ async function getAllCoursesForAdmin({ status, search } = {}) {
   return rows;
 }
 
+async function invalidateCourseListCache() {
+  await cache.invalidatePattern('courses:list:*');
+  await adminService.invalidateAnalyticsCache();
+}
+
 module.exports = {
   listCourses, getCourse, createCourse, updateCourse,
   publishCourse, unpublishCourse, deleteCourse,
   uploadThumbnail, listCategories,
   createSection, updateSection, deleteSection, reorderSections,
   getMyCourses, getAllCoursesForAdmin,
+  invalidateCourseListCache,
 };

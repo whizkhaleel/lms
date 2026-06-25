@@ -10,6 +10,7 @@ const redis     = require('../../config/redis');
 const env       = require('../../config/env');
 const ApiError  = require('../../shared/utils/apiError');
 const eventBus  = require('../../shared/events/eventBus');
+const adminService = require('../admin/admin.service');
 
 // ── Token helpers ────────────────────────────
 
@@ -81,6 +82,8 @@ async function register({ firstName, lastName, email, password }) {
     firstName:         user.first_name,
     verificationToken: user.verificationToken,
   });
+
+  await adminService.invalidateAnalyticsCache();
 
   return {
     id:        user.id,

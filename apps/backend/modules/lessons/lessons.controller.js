@@ -11,7 +11,6 @@ const lessonSchema = Joi.object({
   content:         Joi.string().max(50000),
   sectionId:       Joi.string().uuid().required(),
   durationSeconds: Joi.number().integer().min(0),
-  isFreePreview:   Joi.boolean(),
   isPublished:     Joi.boolean(),
 });
 

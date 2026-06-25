@@ -23,7 +23,7 @@ const assignmentSchema = Joi.object({
 
 async function createAssignment(req, res, next) {
   try {
-    const { error, value } = assignmentSchema.validate(req.body, { abortEarly: false });
+    const { error, value } = assignmentSchema.validate(req.body, { abortEarly: false, allowUnknown: true });
     if (error) throw ApiError.badRequest('Validation failed', error.details.map(d => d.message));
     const assignment = await service.createAssignment(
       value.lessonId, value.courseId, value, req.user

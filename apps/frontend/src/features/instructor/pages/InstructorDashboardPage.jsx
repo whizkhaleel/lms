@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link }      from 'react-router-dom';
-import { BookOpen, Users, Star, PlusCircle, Eye, Edit, BarChart3 } from 'lucide-react';
+
+import { BookOpen, Users, Star, Eye, Edit, BarChart3 } from 'lucide-react';
 import api     from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
 import { clsx } from 'clsx';
@@ -28,9 +29,6 @@ export default function InstructorDashboardPage() {
           <h1 className="font-display font-bold text-2xl text-white">Instructor Panel</h1>
           <p className="text-gray-400 text-sm mt-1">Manage your courses and students</p>
         </div>
-        <Link to="/instructor/courses/new" className="btn-primary btn">
-          <PlusCircle size={16} /> New Course
-        </Link>
       </div>
 
       {/* Stats */}
@@ -60,9 +58,7 @@ export default function InstructorDashboardPage() {
           <div className="text-center py-16">
             <BookOpen size={40} className="text-gray-700 mx-auto mb-3" />
             <p className="text-gray-400 font-medium">No courses yet</p>
-            <Link to="/instructor/courses/new" className="btn-primary btn mt-4 inline-flex">
-              Create your first course
-            </Link>
+            <p className="text-gray-500 text-sm mt-2">Courses assigned by admin will appear here</p>
           </div>
         ) : (
           <table className="w-full text-sm">

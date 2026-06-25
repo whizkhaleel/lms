@@ -11,7 +11,8 @@ const pool = new Pool({
   password: env.POSTGRES_PASSWORD,
 
   // Pool config — tuned for production
-  max:             20,   // max connections in pool
+  min:             2,    // keep 2 idle connections ready
+  max:             25,   // max concurrent connections
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 

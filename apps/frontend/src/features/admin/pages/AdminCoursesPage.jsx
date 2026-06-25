@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { BookOpen, Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
+import Button from '../../../shared/components/ui/Button';
 import { clsx } from 'clsx';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -55,10 +57,15 @@ export default function AdminCoursesPage() {
           <h1 className="font-display font-bold text-2xl text-white">Course Management</h1>
           <p className="text-gray-400 text-sm mt-1">{total} total courses</p>
         </div>
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search courses…" className="input pl-9 py-2 text-sm w-64" />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search courses…" className="input pl-9 py-2 text-sm w-64" />
+          </div>
+          <Link to="/admin/courses/new">
+            <Button><Plus size={16} /> New Course</Button>
+          </Link>
         </div>
       </div>
 

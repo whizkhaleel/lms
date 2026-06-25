@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
-  BarChart3, Users, BookOpen, GraduationCap, DollarSign,
-  TrendingUp, Clock, CheckCircle2, Activity, Target, Zap,
+  BarChart3, Users, BookOpen,
+  TrendingUp, Clock, CheckCircle2, Target, Zap,
 } from 'lucide-react';
 import api from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
@@ -18,8 +18,7 @@ export default function AdminAnalyticsPage() {
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner /></div>;
 
-  const { revenue, engagement, users: u, courses: c, topCourses } = data || {};
-  const rev = revenue || {};
+  const { engagement, users: u, courses: c, topCourses } = data || {};
   const eng = engagement || {};
 
   const stats = [
@@ -44,53 +43,6 @@ export default function AdminAnalyticsPage() {
             <p className="text-xs text-gray-500 mt-0.5">{label}</p>
           </div>
         ))}
-      </div>
-
-      {/* Revenue */}
-      <div className="card mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <DollarSign size={20} className="text-green-400" />
-          <h2 className="font-semibold text-white">Revenue</h2>
-        </div>
-        {rev.total > 0 ? (
-          <>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-              {Object.entries(rev.byCurrency || {}).map(([currency, amount]) => (
-                <div key={currency}>
-                  <p className="text-2xl font-bold text-white">
-                    {currency} {(+amount).toLocaleString()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">Confirmed</p>
-                </div>
-              ))}
-              <div>
-                <p className="text-sm text-gray-400">{rev.transactionCount || 0} transactions</p>
-              </div>
-            </div>
-            {rev.monthlyTrend?.length > 0 && (
-              <div className="border-t border-gray-800 pt-4 mt-2">
-                <p className="text-xs text-gray-500 mb-2">Monthly trend (12 months)</p>
-                <div className="flex items-end gap-1 h-16">
-                  {rev.monthlyTrend.map((m) => {
-                    const maxAmmount = Math.max(...rev.monthlyTrend.map(x => +x.amount), 1);
-                    const pct = (+m.amount / maxAmmount) * 100;
-                    return (
-                      <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full bg-green-500/20 rounded-t"
-                          style={{ height: Math.max(pct, 4) + '%' }} />
-                        <span className="text-[10px] text-gray-600 truncate w-full text-center">
-                          {m.month.slice(5)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="text-sm text-gray-500">No confirmed payments yet</p>
-        )}
       </div>
 
       {/* User breakdown */}
@@ -170,11 +122,6 @@ export default function AdminAnalyticsPage() {
                     <p className="text-sm font-semibold text-white">{c.studentCount || 0}</p>
                     <p className="text-xs text-gray-500">enrolled</p>
                   </div>
-                  {c.isFree ? (
-                    <span className="badge badge-green text-xs">Free</span>
-                  ) : (
-                    <span className="badge badge-amber text-xs">Paid</span>
-                  )}
                 </div>
               ))}
             </div>
@@ -188,7 +135,6 @@ export default function AdminAnalyticsPage() {
           { label: 'Manage Users',    to: '/admin/users',       icon: Users },
           { label: 'Audit Logs',      to: '/admin/audit-logs',  icon: BarChart3 },
           { label: 'Settings',        to: '/admin/settings',    icon: Clock },
-          { label: 'Payments',        to: '/admin/payments',    icon: DollarSign },
         ].map(({ label, to, icon: Icon }) => (
           <Link key={to} to={to} className="btn-secondary btn justify-start gap-2 text-sm">
             <Icon size={16} /> {label}

@@ -43,7 +43,6 @@ export default function AdminSettingsPage() {
     { key: 'institution_logo_url', label: 'Logo URL',            type: 'url' },
     { key: 'academic_year',        label: 'Academic Year',       type: 'text' },
     { key: 'default_timezone',     label: 'Default Timezone',    type: 'text' },
-    { key: 'default_currency',     label: 'Default Currency',    type: 'text' },
   ];
 
   return (
