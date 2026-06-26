@@ -4,17 +4,22 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../../../shared/stores/authStore';
 import {
   BookOpen, Plus, Trash2, GripVertical, Video, FileText, HelpCircle,
-  ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save, EyeOff,
+  ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save, EyeOff, BarChart3,
+  Lock, Unlock, X, Megaphone, Database, Package, ExternalLink, Globe,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
 import { coursesApi, lessonsApi } from '../../../shared/api/courses.api';
 import { assessmentsApi } from '../../../shared/api/assessments.api';
+import { questionBankApi } from '../../../shared/api/question-bank.api';
 import { submissionsApi } from '../../../shared/api/submissions.api';
+import { availabilityApi } from '../../../shared/api/availability.api';
+import { announcementsApi } from '../../../shared/api/announcements.api';
 import Spinner from '../../../shared/components/ui/spinner';
 import Button from '../../../shared/components/ui/Button';
 import Input, { Textarea, Select } from '../../../shared/components/ui/input';
 import Modal from '../../../shared/components/ui/modal';
+import QuizAnalyticsModal from '../components/QuizAnalyticsModal';
 import { clsx } from 'clsx';
 
 const LEVELS = ['beginner', 'intermediate', 'advanced'];
@@ -23,6 +28,8 @@ const LESSON_TYPES = [
   { value: 'text', label: 'Text', icon: FileText },
   { value: 'quiz', label: 'Quiz', icon: HelpCircle },
   { value: 'assignment', label: 'Assignment', icon: ClipboardList },
+  { value: 'scorm', label: 'SCORM', icon: Package },
+  { value: 'lti', label: 'LTI Tool', icon: Globe },
 ];
 
 export default function CourseBuilderPage() {
@@ -44,6 +51,7 @@ export default function CourseBuilderPage() {
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [editingLesson, setEditingLesson] = useState(null);
+  const [analyticsQuizId, setAnalyticsQuizId] = useState(null);
 
   // Fetch course data for editing
   const { data: courseData, isLoading } = useQuery({
@@ -220,14 +228,22 @@ export default function CourseBuilderPage() {
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-gray-800 mb-6">
-        {['details', 'curriculum'].filter(t => !isExactlyInstructor || t !== 'details').map(t => (
+        {['details', 'curriculum', 'announcements', 'question-bank', 'groups'].filter(t => {
+          if (isExactlyInstructor && t === 'details') return false;
+          if (!isEditing && (t === 'announcements' || t === 'question-bank' || t === 'groups')) return false;
+          return true;
+        }).map(t => (
           <button key={t}
-            onClick={() => setTab(t)}
+            onClick={() => {
+              if (t === 'question-bank') navigate(`/instructor/courses/${id}/question-bank`);
+              else if (t === 'groups') navigate(`/instructor/courses/${id}/groups`);
+              else setTab(t);
+            }}
             className={clsx('px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors',
               tab === t ? 'border-[#3B9EE8] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
             )}
           >
-            {t === 'details' ? 'Course Details' : 'Curriculum'}
+            {t === 'details' ? 'Course Details' : t === 'curriculum' ? 'Curriculum' : t === 'announcements' ? 'Announcements' : t === 'question-bank' ? 'Question Bank' : 'Groups'}
           </button>
         ))}
       </div>
@@ -344,6 +360,57 @@ export default function CourseBuilderPage() {
         </div>
       )}
 
+      {tab === 'announcements' && (
+        <div className="max-w-3xl space-y-6">
+          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-4">
+            <h3 className="font-semibold text-white text-lg">Post Announcement</h3>
+            <Input label="Title" value={announceForm.title}
+              onChange={e => setAnnounceForm(p => ({ ...p, title: e.target.value }))}
+              placeholder="e.g. Assignment deadline extended" />
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Message</label>
+              <textarea value={announceForm.body}
+                onChange={e => setAnnounceForm(p => ({ ...p, body: e.target.value }))}
+                rows={4} className="input resize-none" placeholder="Write your announcement..." />
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => postAnnounceMut.mutate(announceForm)}
+                loading={postAnnounceMut.isPending}>
+                <Megaphone size={14} /> Post Announcement
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+              <Megaphone size={16} className="text-blue-400" />
+              Previous Announcements
+            </h3>
+            {!announcementsData || announcementsData.length === 0 ? (
+              <p className="text-gray-500 text-sm">No announcements yet.</p>
+            ) : (
+              announcementsData.map(a => (
+                <div key={a.id} className="bg-[#0A1628] rounded-xl p-4 border border-gray-800 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-white">{a.title}</p>
+                      <p className="text-xs text-gray-500">
+                        {a.first_name} {a.last_name} &middot; {new Date(a.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button onClick={() => deleteAnnounceMut.mutate(a.id)}
+                      className="text-red-400 hover:text-red-300 p-1 shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {a.body && <p className="text-sm text-gray-300 whitespace-pre-wrap">{a.body}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Section modal */}
       <Modal open={showSectionModal} onClose={() => setShowSectionModal(false)} title="Add Section" size="sm">
         <form onSubmit={handleSectionSubmit} className="flex flex-col gap-4">
@@ -363,6 +430,8 @@ export default function CourseBuilderPage() {
         courseId={id}
         sectionId={activeSectionId}
         lesson={editingLesson}
+        courseLessons={sections.flatMap(s => s.lessons || [])}
+        onAnalytics={(qId) => setAnalyticsQuizId(qId)}
         onSaved={(newLesson) => {
           if (!editingLesson && newLesson) {
             setEditingLesson(newLesson);
@@ -373,6 +442,11 @@ export default function CourseBuilderPage() {
             queryClient.invalidateQueries({ queryKey: ['course-builder', id] });
           }
         }}
+      />
+      <QuizAnalyticsModal
+        quizId={analyticsQuizId}
+        open={!!analyticsQuizId}
+        onClose={() => setAnalyticsQuizId(null)}
       />
     </div>
   );
@@ -437,12 +511,14 @@ function SectionCard({ section, index, courseId, isExpanded, onToggle, onDelete,
 }
 
 function LessonTypeIcon({ type }) {
-  const map = { video: Video, text: FileText, quiz: HelpCircle, assignment: ClipboardList };
+  const map = { video: Video, text: FileText, quiz: HelpCircle, assignment: ClipboardList, scorm: Package, lti: Globe };
   const Icon = map[type] || FileText;
   return <Icon size={14} className="text-gray-500" />;
 }
 
-function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
+function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons = [], onSaved, onAnalytics }) {
+  const queryClient = useQueryClient();
+  const allCourseLessons = courseLessons;
   const isEditing = !!lesson;
   const [form, setForm] = useState({
     title: '', type: 'video', content: '', durationSeconds: '',
@@ -459,6 +535,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
   const [savedQuizId, setSavedQuizId] = useState(null);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [editingQ, setEditingQ] = useState(null);
+  const [showImportBank, setShowImportBank] = useState(false);
   const [questionForm, setQuestionForm] = useState({
     type: 'multiple_choice', questionText: '', points: 1, modelAnswer: '',
     options: [{ id: 'a', text: '', is_correct: false }, { id: 'b', text: '', is_correct: false }],
@@ -468,9 +545,26 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
   const [assignForm, setAssignForm] = useState({
     title: '', instructions: '', maxScore: 100, passingScore: 50,
     dueDate: '', allowTextSubmission: true, allowFileSubmission: true,
-    maxFileSizeMb: 50, maxFiles: 3,
+    maxFileSizeMb: 50, maxFiles: 3, isGroupAssignment: false,
   });
   const [savedAssignmentId, setSavedAssignmentId] = useState(null);
+
+  // Rubric state
+  const [rubric, setRubric] = useState({ name: '', description: '', criteria: [] });
+
+  // Availability conditions state
+  const [availabilityEnabled, setAvailabilityEnabled] = useState(false);
+  const [availConditions, setAvailConditions] = useState([]);
+
+  // SCORM state
+  const [scormUploaded, setScormUploaded] = useState(false);
+
+  // LTI state
+  const [ltiToolId, setLtiToolId] = useState('');
+  const [showLtiForm, setShowLtiForm] = useState(false);
+  const [ltiForm, setLtiForm] = useState({
+    title: '', launchUrl: '', consumerKey: '', consumerSecret: '', description: '',
+  });
 
   useEffect(() => {
     if (lesson) {
@@ -485,6 +579,16 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
     }
     setVideoFile(null);
     setResourceFile(null);
+    setScormUploaded(false);
+    setLtiToolId('');
+
+    // Load LTI tool ID from lesson content
+    if (lesson?.type === 'lti' && lesson?.content) {
+      try {
+        const parsed = JSON.parse(lesson.content);
+        if (parsed.toolId) setLtiToolId(parsed.toolId);
+      } catch {}
+    }
   }, [lesson, open]);
 
   // Load quiz data when editing a quiz lesson
@@ -525,10 +629,49 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
           allowFileSubmission: a.allow_file_submission ?? true,
           maxFileSizeMb: a.max_file_size_mb ?? 50,
           maxFiles: a.max_files ?? 3,
+          isGroupAssignment: a.is_group_assignment ?? false,
         });
       }).catch(() => {});
     } else if (lesson?.type !== 'assignment') {
       setSavedAssignmentId(null);
+    }
+  }, [lesson, open]);
+
+  // Load rubric data when editing an assignment
+  useEffect(() => {
+    if (isEditing && lesson?.type === 'assignment' && lesson?.assignment_id) {
+      submissionsApi.getRubric(lesson.assignment_id).then(res => {
+        const r = res?.data?.data?.rubric;
+        if (r) {
+          setRubric({
+            name: r.name || '',
+            description: r.description || '',
+            criteria: (r.criteria || []).map(c => ({ id: c.id, description: c.description, max_score: c.max_score })),
+          });
+        } else {
+          setRubric({ name: '', description: '', criteria: [] });
+        }
+      }).catch(() => {});
+    } else if (lesson?.type !== 'assignment') {
+      setRubric({ name: '', description: '', criteria: [] });
+    }
+  }, [lesson, open]);
+
+  // Load availability conditions when editing
+  useEffect(() => {
+    if (isEditing && lesson?.id) {
+      availabilityApi.getAvailability(courseId, lesson.id).then(res => {
+        if (res?.availability?.conditions?.length > 0) {
+          setAvailabilityEnabled(true);
+          setAvailConditions(res.availability.conditions);
+        } else {
+          setAvailabilityEnabled(false);
+          setAvailConditions([]);
+        }
+      }).catch(() => {});
+    } else {
+      setAvailabilityEnabled(false);
+      setAvailConditions([]);
     }
   }, [lesson, open]);
 
@@ -562,6 +705,46 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
     },
     onSuccess: () => toast.success('Resource uploaded'),
     onError: (err) => toast.error(err.response?.data?.message || 'Upload failed'),
+  });
+
+  // SCORM upload mutation
+  const scormUploadMut = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('package', file);
+      return api.post(`/scorm/courses/${courseId}/lessons/${lesson?.id}/package`, fd);
+    },
+    onSuccess: () => {
+      toast.success('SCORM package uploaded');
+      setScormUploaded(true);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'SCORM upload failed'),
+  });
+
+  // LTI register mutation
+  const registerLtiMut = useMutation({
+    mutationFn: (data) => api.post(`/lti/courses/${courseId}/tools`, data),
+    onSuccess: (res) => {
+      toast.success('LTI tool registered');
+      setShowLtiForm(false);
+      setLtiForm({ title: '', launchUrl: '', consumerKey: '', consumerSecret: '', description: '' });
+      // Select the newly created tool
+      const tool = res.data.data?.tool;
+      if (tool) {
+        setLtiToolId(tool.id);
+        setForm(p => ({ ...p, content: JSON.stringify({ toolId: tool.id }) }));
+      }
+      // Refresh tools list
+      queryClient.invalidateQueries({ queryKey: ['lti-tools', courseId] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to register tool'),
+  });
+
+  // LTI tools query
+  const { data: ltiTools } = useQuery({
+    queryKey: ['lti-tools', courseId],
+    queryFn: () => api.get(`/lti/courses/${courseId}/tools`).then(r => r.data.data.tools || []),
+    enabled: form.type === 'lti' && !!courseId,
   });
 
   // Create/update quiz when lesson is saved
@@ -604,6 +787,21 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete question'),
   });
 
+  const importBankMut = useMutation({
+    mutationFn: (questionIds) => questionBankApi.importToQuiz(courseId, savedQuizId, { questionIds }),
+    onSuccess: (res) => {
+      const imported = res.data.data?.imported || 0;
+      toast.success(`${imported} question(s) imported`);
+      setShowImportBank(false);
+      // Reload quiz questions
+      assessmentsApi.getQuiz(savedQuizId).then(r => {
+        const qs = r.data.data.quiz.questions || [];
+        setQuestions(qs.map((qst, i) => ({ ...qst, _key: i })));
+      }).catch(() => {});
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to import questions'),
+  });
+
   // Save assignment
   const saveAssignMut = useMutation({
     mutationFn: (data) => savedAssignmentId
@@ -615,6 +813,58 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
       toast.success(savedAssignmentId ? 'Assignment updated' : 'Assignment created');
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to save assignment'),
+  });
+
+  // Save availability conditions
+  const saveAvailMut = useMutation({
+    mutationFn: (conditions) => availabilityApi.setAvailability(courseId, lesson.id, conditions),
+    onSuccess: () => toast.success('Access conditions saved'),
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save conditions'),
+  });
+
+  // Save rubric
+  const saveRubricMut = useMutation({
+    mutationFn: (data) => submissionsApi.saveRubric(lesson.assignment_id, data),
+    onSuccess: (res) => {
+      const r = res?.data?.data?.rubric;
+      if (r) {
+        setRubric({
+          name: r.name || '',
+          description: r.description || '',
+          criteria: (r.criteria || []).map(c => ({ id: c.id, description: c.description, max_score: c.max_score })),
+        });
+      }
+      toast.success('Rubric saved');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save rubric'),
+  });
+
+  // Announcements
+  const { data: announcementsData } = useQuery({
+    queryKey: ['course-announcements', courseId],
+    queryFn: () => announcementsApi.list(courseId).then(r => r.data.data || []),
+    enabled: isEditing,
+  });
+
+  const [announceForm, setAnnounceForm] = useState({ title: '', body: '' });
+
+  const postAnnounceMut = useMutation({
+    mutationFn: (data) => announcementsApi.create(courseId, data),
+    onSuccess: () => {
+      toast.success('Announcement posted');
+      setAnnounceForm({ title: '', body: '' });
+      queryClient.invalidateQueries({ queryKey: ['course-announcements', courseId] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to post announcement'),
+  });
+
+  const deleteAnnounceMut = useMutation({
+    mutationFn: (id) => announcementsApi.delete(courseId, id),
+    onSuccess: () => {
+      toast.success('Announcement deleted');
+      queryClient.invalidateQueries({ queryKey: ['course-announcements', courseId] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
   const handleSubmit = (e) => {
@@ -673,6 +923,254 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
           </div>
         )}
 
+        {/* ── SCORM upload ── */}
+        {isEditing && form.type === 'scorm' && (
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-1.5 block">
+              SCORM Package (.zip)
+            </label>
+            {scormUploaded ? (
+              <div className="flex items-center gap-2 text-green-400 text-sm bg-green-400/5 px-3 py-2 rounded-lg">
+                <Package size={14} />
+                Package uploaded
+              </div>
+            ) : (
+              <input type="file" accept=".zip" onChange={e => {
+                if (e.target.files[0]) { scormUploadMut.mutate(e.target.files[0]); }
+              }} className="text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#1A6FBF] file:text-white file:text-sm" />
+            )}
+            {scormUploadMut.isPending && <Spinner size="sm" />}
+          </div>
+        )}
+
+        {/* ── LTI tool selection ── */}
+        {form.type === 'lti' && (
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-1.5 block">LTI Tool</label>
+            {ltiTools && ltiTools.length > 0 ? (
+              <select value={ltiToolId}
+                onChange={e => {
+                  const toolId = e.target.value;
+                  setLtiToolId(toolId);
+                  setForm(p => ({ ...p, content: JSON.stringify({ toolId }) }));
+                }}
+                className="input">
+                <option value="">-- Select an LTI tool --</option>
+                {(ltiTools || []).map(t => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-gray-500">No LTI tools registered yet.</p>
+            )}
+            <button type="button" onClick={() => setShowLtiForm(true)}
+              className="mt-2 text-sm text-blue-400 hover:underline">
+              + Register new tool
+            </button>
+
+            {/* LTI registration form */}
+            {showLtiForm && (
+              <div className="mt-3 p-3 bg-[#0A1628] rounded-lg border border-gray-700 space-y-3">
+                <p className="text-xs font-semibold text-gray-300">Register New LTI Tool</p>
+                <Input label="Tool name" value={ltiForm.title}
+                  onChange={e => setLtiForm(p => ({ ...p, title: e.target.value }))}
+                  required placeholder="e.g. H5P, Articulate Rise" />
+                <Input label="Launch URL" value={ltiForm.launchUrl}
+                  onChange={e => setLtiForm(p => ({ ...p, launchUrl: e.target.value }))}
+                  required placeholder="https://tool.example.com/lti/launch" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Consumer Key" value={ltiForm.consumerKey}
+                    onChange={e => setLtiForm(p => ({ ...p, consumerKey: e.target.value }))}
+                    placeholder="Auto-generated if empty" />
+                  <Input label="Consumer Secret" value={ltiForm.consumerSecret}
+                    onChange={e => setLtiForm(p => ({ ...p, consumerSecret: e.target.value }))}
+                    placeholder="Auto-generated if empty" />
+                </div>
+                <Input label="Description (optional)" value={ltiForm.description}
+                  onChange={e => setLtiForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Brief description of the tool" />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setShowLtiForm(false)}
+                    className="btn-ghost text-xs px-3 py-1.5">
+                    Cancel
+                  </button>
+                  <button type="button"
+                    onClick={() => registerLtiMut.mutate(ltiForm)}
+                    disabled={!ltiForm.title || !ltiForm.launchUrl || registerLtiMut.isPending}
+                    className="btn-primary text-xs px-3 py-1.5">
+                    {registerLtiMut.isPending ? 'Registering...' : 'Register'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Conditional Access ── */}
+        {isEditing && (
+          <div className="border-t border-gray-800 pt-4 mt-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+                {availabilityEnabled ? <Lock size={14} className="text-amber-400" /> : <Unlock size={14} className="text-gray-600" />}
+                Conditional Access
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (availabilityEnabled) {
+                    setAvailabilityEnabled(false);
+                    setAvailConditions([]);
+                    saveAvailMut.mutate([]);
+                  } else {
+                    setAvailabilityEnabled(true);
+                  }
+                }}
+                className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                  availabilityEnabled
+                    ? 'border-amber-500/50 text-amber-400 hover:bg-amber-500/10'
+                    : 'border-gray-700 text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                {availabilityEnabled ? 'Disable' : 'Enable'}
+              </button>
+            </div>
+
+            {availabilityEnabled && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">Students must meet ALL conditions to access this lesson.</p>
+                {availConditions.map((cond, i) => (
+                  <div key={i} className="flex items-start gap-2 bg-white/[0.02] p-3 rounded-lg">
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={cond.type}
+                          onChange={e => {
+                            const updated = [...availConditions];
+                            if (e.target.value === 'date_range') {
+                              updated[i] = { type: 'date_range', start: '', end: '' };
+                            } else if (e.target.value === 'quiz_score') {
+                              updated[i] = { type: 'quiz_score', lessonId: '', minScore: 80 };
+                            } else {
+                              updated[i] = { type: e.target.value, lessonId: '' };
+                            }
+                            setAvailConditions(updated);
+                          }}
+                          className="input py-1.5 text-xs w-auto"
+                        >
+                          <option value="lesson_completed">Prerequisite lesson</option>
+                          <option value="quiz_score">Minimum quiz score</option>
+                          <option value="date_range">Date range</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setAvailConditions(prev => prev.filter((_, j) => j !== i))}
+                          className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+
+                      {cond.type === 'lesson_completed' && (
+                        <Select value={cond.lessonId} onChange={e => {
+                          const updated = [...availConditions];
+                          updated[i] = { ...updated[i], lessonId: e.target.value };
+                          setAvailConditions(updated);
+                        }}>
+                          <option value="">Select a lesson…</option>
+                          {allCourseLessons.map(l => (
+                            <option key={l.id} value={l.id} disabled={l.id === lesson?.id}>
+                              {l.title} ({l.type})
+                            </option>
+                          ))}
+                        </Select>
+                      )}
+
+                      {cond.type === 'quiz_score' && (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Select value={cond.lessonId} onChange={e => {
+                              const updated = [...availConditions];
+                              updated[i] = { ...updated[i], lessonId: e.target.value };
+                              setAvailConditions(updated);
+                            }}>
+                              <option value="">Select quiz lesson…</option>
+                              {allCourseLessons.filter(l => l.type === 'quiz').map(l => (
+                                <option key={l.id} value={l.id} disabled={l.id === lesson?.id}>
+                                  {l.title}
+                                </option>
+                              ))}
+                            </Select>
+                          </div>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={cond.minScore}
+                            onChange={e => {
+                              const updated = [...availConditions];
+                              updated[i] = { ...updated[i], minScore: +e.target.value };
+                              setAvailConditions(updated);
+                            }}
+                            className="input py-1.5 text-xs w-20"
+                            placeholder="80%"
+                          />
+                          <span className="text-xs text-gray-500">%</span>
+                        </div>
+                      )}
+
+                      {cond.type === 'date_range' && (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={cond.start || ''}
+                            onChange={e => {
+                              const updated = [...availConditions];
+                              updated[i] = { ...updated[i], start: e.target.value };
+                              setAvailConditions(updated);
+                            }}
+                            className="input py-1.5 text-xs flex-1"
+                          />
+                          <span className="text-xs text-gray-500">to</span>
+                          <input
+                            type="date"
+                            value={cond.end || ''}
+                            onChange={e => {
+                              const updated = [...availConditions];
+                              updated[i] = { ...updated[i], end: e.target.value };
+                              setAvailConditions(updated);
+                            }}
+                            className="input py-1.5 text-xs flex-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setAvailConditions(prev => [...prev, { type: 'lesson_completed', lessonId: '' }])}
+                  className="text-xs text-[#3B9EE8] hover:underline"
+                >
+                  + Add condition
+                </button>
+
+                {availConditions.length > 0 && (
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => saveAvailMut.mutate(availConditions)}
+                      loading={saveAvailMut.isPending}
+                    >
+                      Save Conditions
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Quiz Builder ── */}
         {isEditing && form.type === 'quiz' && (
           <div className="border-t border-gray-800 pt-4 mt-2 space-y-4">
@@ -708,7 +1206,18 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
             <div className="border-t border-gray-800 pt-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-white">Questions ({questions.length})</h4>
-                <Button variant="secondary" size="sm" onClick={() => {
+                <div className="flex gap-2">
+                  {savedQuizId && (
+                    <Button variant="secondary" size="sm" onClick={() => onAnalytics?.(savedQuizId)}>
+                      <BarChart3 size={14} /> Analytics
+                    </Button>
+                  )}
+                  {savedQuizId && (
+                    <Button variant="secondary" size="sm" onClick={() => setShowImportBank(true)}>
+                      <Database size={14} /> Import from Bank
+                    </Button>
+                  )}
+                  <Button variant="secondary" size="sm" onClick={() => {
                   setEditingQ(null);
                   setQuestionForm({ type: 'multiple_choice', questionText: '', points: 1, modelAnswer: '', options: [
                     { id: 'a', text: '', is_correct: false }, { id: 'b', text: '', is_correct: false },
@@ -716,7 +1225,8 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
                   setShowQuestionForm(true);
                 }}><Plus size={14} /> Add Question</Button>
               </div>
-              {questions.map((q, i) => (
+            </div>
+            {questions.map((q, i) => (
                 <div key={q._key ?? q.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/[0.02] group">
                   <div className="text-sm text-gray-300">
                     <span className="text-gray-600 mr-2">{i + 1}.</span>
@@ -776,6 +1286,85 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
                   onChange={e => setAssignForm(p => ({ ...p, allowFileSubmission: e.target.checked }))} />
                 File submission
               </label>
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input type="checkbox" checked={assignForm.isGroupAssignment}
+                  onChange={e => setAssignForm(p => ({ ...p, isGroupAssignment: e.target.checked }))} />
+                Group submission
+              </label>
+            </div>
+            {assignForm.isGroupAssignment && (
+              <p className="text-xs text-amber-400">
+                Students must be in a group to submit. Manage groups in the Groups tab.
+              </p>
+            )}
+            <div className="border-t border-gray-800 pt-4 mt-2 space-y-4">
+              <h4 className="font-semibold text-white text-lg">Rubric <span className="text-gray-500 text-sm font-normal">(optional)</span></h4>
+              <Input label="Rubric name (optional)" placeholder="e.g. Essay Grading Rubric"
+                value={rubric.name}
+                onChange={e => setRubric(p => ({ ...p, name: e.target.value }))} />
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Rubric description (optional)</label>
+                <textarea value={rubric.description}
+                  onChange={e => setRubric(p => ({ ...p, description: e.target.value }))}
+                  rows={2} className="input resize-none" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-300">Criteria</span>
+                  <button type="button" className="btn-ghost text-sm text-blue-400 hover:text-blue-300"
+                    onClick={() => setRubric(p => ({
+                      ...p,
+                      criteria: [...p.criteria, { description: '', max_score: '', _key: Date.now() }],
+                    }))}>
+                    + Add criterion
+                  </button>
+                </div>
+                {rubric.criteria.map((c, i) => (
+                  <div key={c._key || c.id || i} className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <input type="text" placeholder="Criterion description"
+                        className="input text-sm"
+                        value={c.description}
+                        onChange={e => {
+                          const next = [...rubric.criteria];
+                          next[i] = { ...next[i], description: e.target.value };
+                          setRubric(p => ({ ...p, criteria: next }));
+                        }} />
+                    </div>
+                    <div className="w-24 shrink-0">
+                      <input type="number" placeholder="Max"
+                        className="input text-sm"
+                        value={c.max_score}
+                        onChange={e => {
+                          const next = [...rubric.criteria];
+                          next[i] = { ...next[i], max_score: +e.target.value };
+                          setRubric(p => ({ ...p, criteria: next }));
+                        }} />
+                    </div>
+                    <button type="button" className="btn-ghost p-1.5 rounded text-red-400 hover:text-red-300 mt-1"
+                      onClick={() => setRubric(p => ({
+                        ...p,
+                        criteria: p.criteria.filter((_, j) => j !== i),
+                      }))}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                {rubric.criteria.length > 0 && (
+                  <div className="text-right text-sm text-gray-400">
+                    Total: {rubric.criteria.reduce((s, c) => s + (Number(c.max_score) || 0), 0)} pts
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={() => {
+                  saveRubricMut.mutate({
+                    name: rubric.name,
+                    description: rubric.description,
+                    criteria: rubric.criteria.map(c => ({ description: c.description, max_score: c.max_score })),
+                  });
+                }} loading={saveRubricMut.isPending}><Save size={14} /> Save Rubric</Button>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={() => {
@@ -857,6 +1446,15 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
           </div>
         </Modal>
 
+        {/* ── Import from Question Bank Modal ── */}
+        <ImportBankModal
+          open={showImportBank}
+          onClose={() => setShowImportBank(false)}
+          courseId={courseId}
+          onImport={(questionIds) => importBankMut.mutate(questionIds)}
+          loading={importBankMut.isPending}
+        />
+
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
           <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
           <Button type="submit" loading={saveMutation.isPending}>
@@ -864,6 +1462,106 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, onSaved }) {
           </Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+function ImportBankModal({ open, onClose, courseId, onImport, loading }) {
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const { data: catsData } = useQuery({
+    queryKey: ['question-bank-categories', courseId],
+    queryFn: () => questionBankApi.listCategories(courseId).then(r => r.data.data?.categories || []),
+    enabled: open,
+  });
+  const categories = catsData || [];
+
+  const { data: qsData, isLoading } = useQuery({
+    queryKey: ['question-bank-questions', courseId],
+    queryFn: () => questionBankApi.listQuestions(courseId).then(r => r.data.data?.questions || []),
+    enabled: open,
+  });
+  const questions = qsData || [];
+
+  const getCatName = (id) => categories.find(c => c.id === id)?.name || id;
+
+  const toggleId = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleImport = () => {
+    if (selectedIds.length === 0) {
+      toast.error('Select at least one question');
+      return;
+    }
+    onImport(selectedIds);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Import from Question Bank" size="lg">
+      <div className="flex flex-col gap-4 max-h-[60vh] overflow-y-auto pr-1">
+        {isLoading ? (
+          <Spinner />
+        ) : questions.length === 0 ? (
+          <div className="text-center py-8">
+            <Database size={40} className="mx-auto text-gray-700 mb-3" />
+            <p className="text-gray-500 text-sm">No questions in the bank for this course</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-400">{questions.length} question(s) available</p>
+              <p className="text-sm text-gray-400">{selectedIds.length} selected</p>
+            </div>
+            {categories.map(cat => {
+              const catQs = questions.filter(q => q.category_id === cat.id);
+              if (catQs.length === 0) return null;
+              return (
+                <div key={cat.id}>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{cat.name}</h4>
+                  <div className="space-y-1">
+                    {catQs.map(q => (
+                      <label key={q.id}
+                        className={clsx(
+                          'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                          selectedIds.includes(q.id)
+                            ? 'border-[#1A6FBF]/50 bg-[#1A6FBF]/10'
+                            : 'border-gray-800 hover:border-gray-700'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(q.id)}
+                          onChange={() => toggleId(q.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white">{q.question_text}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-[#1A6FBF]/20 text-[#3B9EE8]">
+                              {q.type.replace('_', ' ')}
+                            </span>
+                            <span className="text-xs text-gray-600">{q.points} pts</span>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 pt-3 border-t border-gray-800 mt-4">
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button onClick={handleImport} loading={loading} disabled={selectedIds.length === 0}>
+          <Database size={14} /> Import Selected ({selectedIds.length})
+        </Button>
+      </div>
     </Modal>
   );
 }

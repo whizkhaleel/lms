@@ -8,4 +8,8 @@ export const assessmentsApi = {
   addQuestion:    (quizId, data)            => api.post(`/assessments/quizzes/${quizId}/questions`, data),
   updateQuestion: (quizId, questionId, data) => api.patch(`/assessments/quizzes/${quizId}/questions/${questionId}`, data),
   deleteQuestion: (quizId, questionId)       => api.delete(`/assessments/quizzes/${quizId}/questions/${questionId}`),
+
+  getQuizAnalytics:       (quizId)       => api.get(`/assessments/quizzes/${quizId}/analytics`),
+  getPendingShortAnswers: (quizId)       => api.get(`/assessments/quizzes/${quizId}/pending-answers`),
+  gradeShortAnswer:       (answerId,data)=> api.patch(`/assessments/answers/${answerId}/grade`, data),
 };

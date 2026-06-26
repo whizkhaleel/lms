@@ -98,6 +98,13 @@ async function deleteCourse(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function cloneCourse(req, res, next) {
+  try {
+    const course = await service.cloneCourse(req.params.id, req.user);
+    ApiResponse.created(res, { course }, 'Course duplicated successfully');
+  } catch (err) { next(err); }
+}
+
 async function uploadThumbnail(req, res, next) {
   try {
     if (!req.file) throw ApiError.badRequest('No file provided');
@@ -153,6 +160,6 @@ async function getMyCourses(req, res, next) {
 module.exports = {
   listCourses, getCourse, listCategories, getMyCourses,
   createCourse, updateCourse, publishCourse, unpublishCourse,
-  deleteCourse, uploadThumbnail,
+  deleteCourse, cloneCourse, uploadThumbnail,
   createSection, updateSection, deleteSection, reorderSections,
 };

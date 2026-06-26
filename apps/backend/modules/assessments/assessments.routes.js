@@ -20,7 +20,8 @@ router.patch ('/quizzes/:quizId/questions/:questionId',  authorize('instructor',
 router.delete('/quizzes/:quizId/questions/:questionId',  authorize('instructor','admin'), controller.deleteQuestion);
 
 // ── Grading short answers (Instructor / Admin) ─
-router.patch ('/answers/:answerId/grade',      authorize('instructor','admin'), controller.gradeShortAnswer);
+router.get   ('/quizzes/:quizId/pending-answers', authorize('instructor','admin'), controller.getPendingShortAnswers);
+router.patch ('/answers/:answerId/grade',         authorize('instructor','admin'), controller.gradeShortAnswer);
 
 // ── Student — get quiz by lesson (enrolled students) ──
 router.get   ('/quizzes/by-lesson/:lessonId', controller.getQuizByLesson);

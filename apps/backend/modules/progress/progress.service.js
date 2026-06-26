@@ -3,6 +3,7 @@
 const db = require('../../config/db');
 const ApiError = require('../../shared/utils/apiError');
 const eventBus = require('../../shared/events/eventBus');
+const avail = require('../lessons/availability.service');
 
 // ─────────────────────────────────────────────────────────────
 //  PROGRESS SERVICE
@@ -322,13 +323,23 @@ async function getCourseProgress(userId, courseId) {
     [userId, courseId]
   );
 
-  // Find the "continue" lesson — first incomplete one
-  const nextLesson = lessonRows.find(l => !l.is_completed) || null;
+  // Find the "continue" lesson — first accessible incomplete one
+  const lessonAvail = await avail.evaluateCourseAvailability(userId, courseId);
+  const lessonsWithAccess = lessonRows.map(l => ({
+    ...l,
+    is_locked: lessonAvail[l.id] ? !lessonAvail[l.id].accessible : false,
+    lock_reason: lessonAvail[l.id]?.reasons?.join('; ') || null,
+  }));
+
+  const nextLesson = lessonsWithAccess.find(l => !l.is_completed && !l.is_locked)
+    || lessonRows.find(l => !l.is_completed)
+    || null;
 
   return {
     ...snapRows[0],
     nextLessonId: nextLesson?.id || null,
-    lessons: lessonRows,
+    lessons: lessonsWithAccess,
+    availability: lessonAvail,
   };
 }
 

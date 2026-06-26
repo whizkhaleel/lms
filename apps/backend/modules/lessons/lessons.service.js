@@ -3,6 +3,7 @@
 const db          = require('../../config/db');
 const ApiError    = require('../../shared/utils/apiError');
 const fileService = require('../files/files.service');
+const avail       = require('./availability.service');
 
 function isCourseManager(user, instructorId) {
   return user.role === 'admin' || user.role === 'super_admin' || user.id === instructorId;
@@ -121,8 +122,9 @@ async function getLesson(lessonId, courseId, requestingUser) {
   }
 
   const enrolled = await verifyEnrollment(requestingUser.id, courseId);
+  let isOwner = false;
   if (!enrolled) {
-    const isOwner = requestingUser.role === 'admin' || requestingUser.role === 'super_admin' ||
+    isOwner = requestingUser.role === 'admin' || requestingUser.role === 'super_admin' ||
       await db.query(
         'SELECT id FROM courses WHERE id = $1 AND instructor_id = $2',
         [courseId, requestingUser.id]
@@ -130,6 +132,19 @@ async function getLesson(lessonId, courseId, requestingUser) {
 
     if (!isOwner) {
       throw ApiError.forbidden('You must be enrolled to access this lesson');
+    }
+  }
+
+  // Check conditional availability for enrolled students
+  if (enrolled && !isOwner) {
+    const availability = await avail.getAvailability(lessonId);
+    if (availability && availability.conditions && availability.conditions.length > 0) {
+      const evaluation = await avail.evaluateConditions(requestingUser.id, availability.conditions);
+      if (!evaluation.accessible) {
+        throw ApiError.forbidden(
+          evaluation.reasons.join('; ') || 'This lesson is not yet available'
+        );
+      }
     }
   }
 

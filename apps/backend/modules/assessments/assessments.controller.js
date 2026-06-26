@@ -148,10 +148,17 @@ async function gradeShortAnswer(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getPendingShortAnswers(req, res, next) {
+  try {
+    const answers = await service.getPendingShortAnswers(req.params.quizId, req.user);
+    ApiResponse.success(res, { answers });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   createQuiz, updateQuiz, getQuizForInstructor, getQuizAnalytics,
   addQuestion, updateQuestion, deleteQuestion,
   getQuizByLesson,
   startAttempt, submitAttempt, getAttemptResult, getMyAttempts,
-  gradeShortAnswer,
+  gradeShortAnswer, getPendingShortAnswers,
 };

@@ -55,6 +55,10 @@ router.delete('/:id',
   authorize('instructor', 'admin'),
   controller.deleteCourse);
 
+router.post('/:id/clone',
+  authorize('instructor', 'admin'),
+  controller.cloneCourse);
+
 // Thumbnail upload
 router.post('/:id/thumbnail',
   authorize('instructor', 'admin'),

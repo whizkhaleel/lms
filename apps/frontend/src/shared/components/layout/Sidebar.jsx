@@ -3,11 +3,13 @@ import { clsx }    from 'clsx';
 import {
   LayoutDashboard, BookOpen, GraduationCap, MessageSquare,
   Bell, Users, Settings, BarChart3, FileText, X,
-  PlusCircle, Library,
+  PlusCircle, Library, Calendar as CalendarIcon,
+  CreditCard, Award,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../hooks/useNotifications';
 
-const NavItem = ({ to, icon: Icon, label, end = false }) => (
+const NavItem = ({ to, icon: Icon, label, end = false, badge }) => (
   <NavLink
     to={to}
     end={end}
@@ -19,7 +21,12 @@ const NavItem = ({ to, icon: Icon, label, end = false }) => (
     )}
   >
     <Icon size={18} />
-    {label}
+    <span className="flex-1">{label}</span>
+    {badge > 0 && (
+      <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+        {badge > 99 ? '99+' : badge}
+      </span>
+    )}
   </NavLink>
 );
 
@@ -31,6 +38,7 @@ const SectionLabel = ({ label }) => (
 
 export default function Sidebar({ open, onClose }) {
   const { user, isAdmin, isInstructor } = useAuth();
+  const { unreadCount } = useNotifications();
 
   return (
     <>
@@ -59,7 +67,7 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/dashboard"  icon={LayoutDashboard} label="My Dashboard" end />
               <NavItem to="/courses"    icon={Library}         label="Course Catalog" />
               <NavItem to="/messages"   icon={MessageSquare}   label="Messages" />
-              <NavItem to="/notifications" icon={Bell}         label="Notifications" />
+              <NavItem to="/notifications" icon={Bell}         label="Notifications" badge={unreadCount} />
             </>
           )}
 
@@ -69,6 +77,7 @@ export default function Sidebar({ open, onClose }) {
               <SectionLabel label="Teaching" />
               <NavItem to="/instructor"              icon={GraduationCap} label="Instructor Panel" end />
               <NavItem to="/instructor/courses"      icon={BookOpen}      label="My Courses" />
+              <NavItem to="/instructor/gradebook"  icon={Award}        label="Gradebook" />
               <NavItem to="/instructor/submissions"  icon={FileText}      label="Submissions" />
               <NavItem to="/instructor/analytics"    icon={BarChart3}     label="Analytics" />
             </>
@@ -83,12 +92,17 @@ export default function Sidebar({ open, onClose }) {
               <NavItem to="/admin/courses"     icon={BookOpen}        label="All Courses" />
               <NavItem to="/admin/courses/new" icon={PlusCircle}     label="Create Course" />
               <NavItem to="/admin/enrollments" icon={GraduationCap}   label="Enrollments" />
-
               <NavItem to="/admin/analytics"   icon={BarChart3}       label="Analytics" />
+              <NavItem to="/admin/payments"  icon={CreditCard}      label="Payments" />
               <NavItem to="/admin/audit-logs" icon={FileText}        label="Audit Logs" />
               <NavItem to="/admin/settings"   icon={Settings}        label="Settings" />
             </>
           )}
+
+          {/* Separator + Calendar (visible to all roles) */}
+          <div className="mt-2 pt-2 border-t border-gray-800">
+            <NavItem to="/calendar" icon={CalendarIcon} label="Calendar" />
+          </div>
 
         </div>
 

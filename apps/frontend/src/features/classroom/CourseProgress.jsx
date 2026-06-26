@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Lock } from 'lucide-react';
 import apiClient from '@/shared/api/client';
 
 // ─────────────────────────────────────────────
@@ -111,59 +112,72 @@ export default function CourseProgress({ courseId, activeLessonId, onSelectLesso
             {/* Lessons */}
             {section.lessons.map((lesson) => {
               const isActive = lesson.id === activeLessonId;
+              const isLocked = lesson.is_locked;
               return (
                 <button
                   key={lesson.id}
-                  onClick={() => onSelectLesson?.(lesson.id)}
+                  onClick={() => !isLocked && onSelectLesson?.(lesson.id)}
+                  disabled={isLocked}
                   className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b border-gray-700/50 ${
                     isActive
                       ? 'bg-blue-900/40 border-l-2 border-l-blue-500'
+                      : isLocked
+                      ? 'opacity-50 cursor-not-allowed'
                       : 'hover:bg-gray-800/60'
                   }`}
+                  title={isLocked ? (lesson.lock_reason || 'This lesson is locked') : lesson.title}
                 >
-                  {/* Completion circle */}
+                  {/* Completion / Lock circle */}
                   <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${
-                    lesson.is_completed
+                    isLocked
+                      ? 'border-gray-700 bg-gray-800'
+                      : lesson.is_completed
                       ? 'bg-green-600 border-green-600'
                       : isActive
                       ? 'border-blue-500'
                       : 'border-gray-600'
                   }`}>
-                    {lesson.is_completed && (
+                    {isLocked ? (
+                      <Lock size={10} className="text-gray-600" />
+                    ) : lesson.is_completed ? (
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
-                    )}
-                    {isActive && !lesson.is_completed && (
+                    ) : isActive && !lesson.is_completed ? (
                       <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Lesson info */}
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm leading-tight truncate ${
-                      isActive ? 'text-white font-medium' : 'text-gray-300'
+                      isActive ? 'text-white font-medium' : isLocked ? 'text-gray-600' : 'text-gray-300'
                     }`}>
                       {lesson.title}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      {/* Type icon */}
-                      <span className="text-xs text-gray-500">
-                        {lesson.type === 'video'  ? '▶ Video'
-                       : lesson.type === 'pdf'    ? '📄 PDF'
-                       : lesson.type === 'text'   ? '📝 Article'
-                       : lesson.type === 'quiz'   ? '❓ Quiz'
-                       : '📋 Task'}
-                      </span>
-                      {lesson.duration_seconds > 0 && (
-                        <span className="text-xs text-gray-600">
-                          · {formatTime(lesson.duration_seconds)}
-                        </span>
+                      {isLocked ? (
+                        <span className="text-xs text-gray-600">Locked</span>
+                      ) : (
+                        <>
+                          <span className="text-xs text-gray-500">
+                            {lesson.type === 'video'  ? '▶ Video'
+                           : lesson.type === 'pdf'    ? '📄 PDF'
+                           : lesson.type === 'text'   ? '📝 Article'
+                           : lesson.type === 'quiz'   ? '❓ Quiz'
+                           : '📋 Task'}
+                          </span>
+                          {lesson.duration_seconds > 0 && (
+                            <span className="text-xs text-gray-600">
+                              · {formatTime(lesson.duration_seconds)}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
 
                     {/* Mini progress bar for partially watched */}
-                    {!lesson.is_completed && lesson.watched_secs > 0 && lesson.duration_seconds > 0 && (
+                    {!isLocked && !lesson.is_completed && lesson.watched_secs > 0 && lesson.duration_seconds > 0 && (
                       <div className="mt-1.5 h-0.5 bg-gray-700 rounded-full w-full">
                         <div
                           className="h-full bg-blue-600/70 rounded-full"

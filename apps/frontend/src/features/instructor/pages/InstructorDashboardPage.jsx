@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link }      from 'react-router-dom';
 
-import { BookOpen, Users, Star, Eye, Edit, BarChart3 } from 'lucide-react';
+import { BookOpen, Users, Star, Eye, Edit, BarChart3, Award, Copy, ScrollText } from 'lucide-react';
 import api     from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
 import { clsx } from 'clsx';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 const STATUS_BADGE = {
   published:    'badge-green',
@@ -14,9 +16,19 @@ const STATUS_BADGE = {
 };
 
 export default function InstructorDashboardPage() {
+  const queryClient = useQueryClient();
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ['instructor-courses'],
     queryFn:  () => api.get('/courses/my-courses').then(r => r.data.data || []),
+  });
+
+  const cloneMutation = useMutation({
+    mutationFn: (id) => api.post(`/courses/${id}/clone`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['instructor-courses'] });
+      toast.success('Course duplicated');
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || 'Failed to duplicate course'),
   });
 
   const totalStudents = courses.reduce((s, c) => s + (c.student_count || 0), 0);
@@ -103,10 +115,22 @@ export default function InstructorDashboardPage() {
                         className="btn-ghost p-1.5 rounded-lg" title="Analytics">
                         <BarChart3 size={15} />
                       </Link>
+                      <Link to={`/instructor/courses/${course.id}/certificates`}
+                        className="btn-ghost p-1.5 rounded-lg" title="Certificates">
+                        <Award size={15} />
+                      </Link>
+                      <Link to={`/instructor/courses/${course.id}/gradebook`}
+                        className="btn-ghost p-1.5 rounded-lg" title="Gradebook">
+                        <ScrollText size={15} />
+                      </Link>
                       <Link to={`/courses/${course.slug}`}
                         className="btn-ghost p-1.5 rounded-lg" title="Preview">
                         <Eye size={15} />
                       </Link>
+                      <button onClick={() => cloneMutation.mutate(course.id)}
+                        className="btn-ghost p-1.5 rounded-lg" title="Duplicate">
+                        <Copy size={15} />
+                      </button>
                     </div>
                   </td>
                 </tr>

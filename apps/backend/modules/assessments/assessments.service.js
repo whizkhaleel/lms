@@ -689,10 +689,42 @@ async function getQuizAnalytics(quizId, requestingUser) {
   };
 }
 
+// ── Pending short answers (Instructor) ─────────
+async function getPendingShortAnswers(quizId, requestingUser) {
+  const { rows: qRows } = await db.query(
+    `SELECT c.instructor_id FROM quizzes q JOIN courses c ON c.id = q.course_id WHERE q.id = $1`,
+    [quizId]
+  );
+  if (!qRows[0]) throw ApiError.notFound('Quiz not found');
+  if (requestingUser.role !== 'admin' && qRows[0].instructor_id !== requestingUser.id) {
+    throw ApiError.forbidden('Access denied');
+  }
+
+  const { rows } = await db.query(
+    `SELECT qa.id, qa.selected_options, qa.attempt_id, qa.question_id,
+            qa.instructor_note,
+            qq.question_text, qq.points AS max_points,
+            u.id AS user_id, u.first_name, u.last_name,
+            qat.attempt_number, qat.submitted_at
+     FROM quiz_answers qa
+     JOIN quiz_questions qq ON qq.id = qa.question_id
+     JOIN quiz_attempts qat ON qat.id = qa.attempt_id
+     JOIN users u ON u.id = qat.user_id
+     WHERE qq.quiz_id = $1
+       AND qq.type = 'short_answer'
+       AND qa.is_correct IS NULL
+     ORDER BY qat.submitted_at ASC`,
+    [quizId]
+  );
+
+  return rows;
+}
+
 module.exports = {
   createQuiz, updateQuiz, getQuizForInstructor,
   addQuestion, updateQuestion, deleteQuestion,
   getQuizByLesson,
   startAttempt, submitAttempt, getAttemptResult,
   getMyAttempts, gradeShortAnswer, getQuizAnalytics,
+  getPendingShortAnswers,
 };

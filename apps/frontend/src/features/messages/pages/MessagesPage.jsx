@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, MessageSquare } from 'lucide-react';
+import { Send, MessageSquare, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api             from '../../../shared/api/client';
 import { useAuthStore }from '../../../shared/stores/authStore';
 import { useSocketStore} from '../../../shared/stores/socketStore';
 import Spinner         from '../../../shared/components/ui/spinner';
+import toast           from 'react-hot-toast';
 import { clsx }        from 'clsx';
 
 export default function MessagesPage() {
@@ -62,6 +63,14 @@ export default function MessagesPage() {
       queryClient.invalidateQueries({ queryKey: ['messages', activeConv.conversation_id] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: ({ convId, msgId }) => api.delete(`/messages/${convId}/messages/${msgId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['messages', activeConv.conversation_id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
   const handleSend = () => {
@@ -160,20 +169,34 @@ export default function MessagesPage() {
             {messages.map(msg => {
               const isMe = msg.sender_id === user?.id;
               return (
-                <div key={msg.id} className={clsx('flex', isMe && 'justify-end')}>
+                <div key={msg.id} className={clsx('group flex', isMe && 'justify-end')}>
                   <div className={clsx(
-                    'max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm',
+                    'relative max-w-xs lg:max-w-sm px-4 py-2.5 rounded-2xl text-sm',
                     isMe
                       ? 'bg-[#1A6FBF] text-white rounded-br-sm'
                       : 'bg-[#112236] text-gray-200 rounded-bl-sm border border-gray-700'
                   )}>
                     <p className="leading-relaxed">{msg.content}</p>
-                    <p className={clsx(
-                      'text-xs mt-1',
-                      isMe ? 'text-blue-200' : 'text-gray-500'
-                    )}>
-                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                    </p>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className={clsx(
+                        'text-xs',
+                        isMe ? 'text-blue-200' : 'text-gray-500'
+                      )}>
+                        {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                      </p>
+                      {isMe && (
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this message?'))
+                              deleteMut.mutate({ convId: activeConv.conversation_id, msgId: msg.id });
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-opacity"
+                          title="Delete"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

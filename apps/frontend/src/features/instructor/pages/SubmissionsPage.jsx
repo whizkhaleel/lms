@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Users, CheckCircle2, Clock, ArrowLeft, FileText, Download, X } from 'lucide-react';
+import { BookOpen, Users, CheckCircle2, Clock, ArrowLeft, FileText, Download, X, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import api from '../../../shared/api/client';
@@ -50,6 +50,25 @@ export default function SubmissionsPage() {
       submissionsApi.grade(submissionId, { score, feedback }),
     onSuccess: () => {
       toast.success('Submission graded');
+      queryClient.invalidateQueries({ queryKey: ['assignment-submissions'] });
+      queryClient.invalidateQueries({ queryKey: ['course-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['submission-detail'] });
+      setSelectedSubmission(null);
+    },
+    onError: (e) => toast.error(e?.response?.data?.message || 'Failed to grade'),
+  });
+
+  const { data: rubric } = useQuery({
+    queryKey: ['assignment-rubric', selectedAssignment],
+    queryFn: () => submissionsApi.getRubric(selectedAssignment).then(r => r?.data?.data?.rubric),
+    enabled: !!selectedAssignment,
+  });
+
+  const rubricGradeMutation = useMutation({
+    mutationFn: ({ submissionId, scores, feedback }) =>
+      submissionsApi.gradeWithRubric(submissionId, { scores, feedback }),
+    onSuccess: () => {
+      toast.success('Submission graded with rubric');
       queryClient.invalidateQueries({ queryKey: ['assignment-submissions'] });
       queryClient.invalidateQueries({ queryKey: ['course-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['submission-detail'] });
@@ -308,48 +327,95 @@ export default function SubmissionsPage() {
                   </div>
                 )}
 
+                {/* Rubric section */}
+                {rubric?.criteria?.length > 0 && (
+                  <div className="bg-[#0A1628] rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+                      <BarChart3 size={14} className="text-blue-400" />
+                      Rubric: {rubric.name || 'Untitled'}
+                    </div>
+                    {rubric.description && (
+                      <p className="text-xs text-gray-500">{rubric.description}</p>
+                    )}
+                  </div>
+                )}
+
                 {/* Grade form */}
                 <form onSubmit={e => {
                   e.preventDefault();
                   const fd = new FormData(e.target);
-                  const score = parseInt(fd.get('score'), 10);
-                  if (isNaN(score) || score < 0) return toast.error('Score must be a positive number');
-                  gradeMutation.mutate({
-                    submissionId: selectedSubmission,
-                    score,
-                    feedback: fd.get('feedback') || '',
-                  });
+
+                  if (rubric?.criteria?.length > 0) {
+                    const scores = {};
+                    let total = 0;
+                    for (const c of rubric.criteria) {
+                      const val = parseFloat(fd.get(`criterion_${c.id}`));
+                      if (isNaN(val) || val < 0 || val > c.max_score) {
+                        return toast.error(`Score for "${c.description}" must be between 0 and ${c.max_score}`);
+                      }
+                      scores[c.id] = val;
+                      total += val;
+                    }
+                    rubricGradeMutation.mutate({
+                      submissionId: selectedSubmission,
+                      scores,
+                      feedback: fd.get('feedback') || '',
+                    });
+                  } else {
+                    const score = parseInt(fd.get('score'), 10);
+                    if (isNaN(score) || score < 0) return toast.error('Score must be a positive number');
+                    gradeMutation.mutate({
+                      submissionId: selectedSubmission,
+                      score,
+                      feedback: fd.get('feedback') || '',
+                    });
+                  }
                 }} className="space-y-4">
-                  <div>
-                    <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
-                      Score (out of {submissionDetail.max_score})
-                    </label>
-                    <input
-                      type="number"
-                      name="score"
-                      defaultValue={submissionDetail.score ?? ''}
-                      min="0"
-                      max={submissionDetail.max_score}
-                      required
-                      className="w-full bg-[#0A1628] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#3B9EE8]"
-                    />
-                  </div>
+                  {rubric?.criteria?.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Per-Criterion Scores</p>
+                      {rubric.criteria.map(c => (
+                        <div key={c.id}>
+                          <label className="block text-sm text-gray-300 mb-1">
+                            {c.description}
+                            <span className="text-gray-500 text-xs ml-1">(max {c.max_score})</span>
+                          </label>
+                          <input type="number" name={`criterion_${c.id}`}
+                            defaultValue={submissionDetail.score ?? ''}
+                            min="0" max={c.max_score} step="0.01" required
+                            className="w-full bg-[#0A1628] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#3B9EE8]" />
+                        </div>
+                      ))}
+                      <p className="text-xs text-gray-500 italic">
+                        Total will be calculated: {rubric.criteria.reduce((s, c) => s + c.max_score, 0)} pts max
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
+                        Score (out of {submissionDetail.max_score})
+                      </label>
+                      <input type="number" name="score"
+                        defaultValue={submissionDetail.score ?? ''}
+                        min="0" max={submissionDetail.max_score} required
+                        className="w-full bg-[#0A1628] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#3B9EE8]" />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">Feedback</label>
-                    <textarea
-                      name="feedback"
-                      rows={4}
+                    <textarea name="feedback" rows={4}
                       defaultValue={submissionDetail.feedback ?? ''}
                       className="w-full bg-[#0A1628] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#3B9EE8] resize-none"
-                      placeholder="Provide feedback to the student..."
-                    />
+                      placeholder="Provide feedback to the student..." />
                   </div>
                   <div className="flex justify-end gap-3 pt-2">
                     <button type="button" onClick={() => setSelectedSubmission(null)}
                       className="btn-ghost btn">Cancel</button>
-                    <button type="submit" disabled={gradeMutation.isPending}
+                    <button type="submit" disabled={gradeMutation.isPending || rubricGradeMutation.isPending}
                       className="btn-primary btn">
-                      {gradeMutation.isPending ? 'Saving...' : submissionDetail.status === 'graded' ? 'Update Grade' : 'Submit Grade'}
+                      {gradeMutation.isPending || rubricGradeMutation.isPending
+                        ? 'Saving...'
+                        : submissionDetail.status === 'graded' ? 'Update Grade' : 'Submit Grade'}
                     </button>
                   </div>
                 </form>

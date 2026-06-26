@@ -1,0 +1,5 @@
+1. Assignment submission UI (backend ready, frontend missing in ClassroomPage)
+2. Self-registration (DB schema + service exist, just no public route/page)
+3. SCORM/LTI support (needed for third-party content integration)
+4. Full gradebook (instructor-facing class overview)
+5. Custom roles (only 4 hardcoded roles)

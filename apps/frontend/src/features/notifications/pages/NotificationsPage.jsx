@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, CheckCheck, Trash2, Clock } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, Clock, Settings, BellOff, Mail } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
+import { notificationsApi } from '../../../shared/api/notifications.api';
 import Spinner from '../../../shared/components/ui/spinner';
 import Button from '../../../shared/components/ui/Button';
 import { clsx } from 'clsx';
@@ -14,13 +15,36 @@ const TYPE_ICONS = {
   assignment_graded: '✅',
   certificate_issued: '🎉',
   forum_reply: '💬',
+  forum_mention: '💬',
+  forum_thread_created: '💬',
   direct_message: '✉️',
   system: '🔔',
+  lesson_available: '📚',
+  announcement: '📢',
+  course_announcement: '📢',
+  payment_receipt: '🧾',
 };
+
+const ALL_TYPES = [
+  { type: 'enrollment', label: 'Enrollment' },
+  { type: 'lesson_available', label: 'Lesson available' },
+  { type: 'assignment_graded', label: 'Assignment graded' },
+  { type: 'quiz_graded', label: 'Quiz graded' },
+  { type: 'announcement', label: 'Announcements' },
+  { type: 'course_announcement', label: 'Course announcements' },
+  { type: 'certificate_issued', label: 'Certificate issued' },
+  { type: 'forum_reply', label: 'Forum replies' },
+  { type: 'forum_mention', label: 'Forum mentions' },
+  { type: 'forum_thread_created', label: 'New forum threads' },
+  { type: 'direct_message', label: 'Direct messages' },
+  { type: 'payment_receipt', label: 'Payment receipts' },
+  { type: 'system', label: 'System notifications' },
+];
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['notifications', unreadOnly],
@@ -45,6 +69,27 @@ export default function NotificationsPage() {
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
+  const { data: prefsData } = useQuery({
+    queryKey: ['notifications', 'preferences'],
+    queryFn: () => notificationsApi.getPreferences().then(r => r.data.data.preferences),
+    enabled: showSettings,
+  });
+
+  const updatePrefMut = useMutation({
+    mutationFn: ({ type, data }) => notificationsApi.updatePreference(type, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'preferences'] });
+      toast.success('Preference updated');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to update'),
+  });
+
+  const userPrefs = prefsData || [];
+  const getPref = (type) => {
+    const p = userPrefs.find(x => x.type === type);
+    return { inApp: p?.in_app ?? true, email: p?.email ?? true };
+  };
+
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-6">
@@ -67,8 +112,43 @@ export default function NotificationsPage() {
               <CheckCheck size={14} /> Mark all read
             </Button>
           )}
+          <Button variant="ghost" className="text-xs"
+            onClick={() => setShowSettings(v => !v)}>
+            <Settings size={14} /> {showSettings ? 'Done' : 'Settings'}
+          </Button>
         </div>
       </div>
+
+      {showSettings && (
+        <div className="card mb-6 p-4 space-y-3">
+          <h3 className="font-semibold text-white text-sm">Notification Settings</h3>
+          <p className="text-xs text-gray-500">Choose how you receive each type of notification.</p>
+          <div className="divide-y divide-gray-800">
+            {ALL_TYPES.map(({ type, label }) => {
+              const pref = getPref(type);
+              return (
+                <div key={type} className="flex items-center justify-between py-2.5">
+                  <span className="text-sm text-gray-300">{TYPE_ICONS[type] || '🔔'} {label}</span>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                      <input type="checkbox" checked={pref.inApp}
+                        onChange={() => updatePrefMut.mutate({ type, data: { inApp: !pref.inApp, email: pref.email } })}
+                        className="accent-[#1A6FBF]" />
+                      <BellOff size={12} /> In-app
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-gray-400 cursor-pointer">
+                      <input type="checkbox" checked={pref.email}
+                        onChange={() => updatePrefMut.mutate({ type, data: { inApp: pref.inApp, email: !pref.email } })}
+                        className="accent-[#1A6FBF]" />
+                      <Mail size={12} /> Email
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="card p-0 overflow-hidden">
         {isLoading ? (

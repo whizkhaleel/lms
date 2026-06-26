@@ -6,3 +6,8 @@ export { submissionsApi }    from './submissions.api';
 export { enrollmentsApi }    from './enrollments.api';
 export { analyticsApi }      from './analytics.api';
 export { certificatesApi }    from './certificates.api';
+export { forumsApi }          from './forums.api';
+export { calendarApi }        from './calendar.api';
+export { paymentsApi }        from './payments.api';
+export { announcementsApi }   from './announcements.api';
+export { questionBankApi }    from './question-bank.api';

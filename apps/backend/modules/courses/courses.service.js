@@ -318,7 +318,269 @@ async function deleteCourse(courseId, requestingUser) {
   eventBus.emit('course.deleted', { courseId, instructorId: requestingUser.id });
 }
 
-// ── Upload thumbnail ──────────────────────────
+// ── Clone course ──────────────────────────────
+async function cloneCourse(courseId, requestingUser) {
+  const { rows: courseRows } = await db.query(
+    'SELECT * FROM courses WHERE id = $1 AND deleted_at IS NULL',
+    [courseId]
+  );
+  const source = courseRows[0];
+  if (!source) throw ApiError.notFound('Course not found');
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin' && source.instructor_id !== requestingUser.id) {
+    throw ApiError.forbidden('You do not have permission to clone this course');
+  }
+
+  let newCourse;
+  const newSlug = await uniqueSlug(`Copy of ${source.title}`);
+  await db.transaction(async (client) => {
+    // 1. Clone the course
+    const { rows: cRows } = await client.query(
+      `INSERT INTO courses
+         (title, slug, description, short_description, category_id,
+          level, language, tags, requirements, objectives,
+          instructor_id, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft')
+       RETURNING *`,
+      [
+        `Copy of ${source.title}`, newSlug,
+        source.description, source.short_description,
+        source.category_id, source.level, source.language,
+        source.tags || '{}',
+        source.requirements || '{}',
+        source.objectives || '{}',
+        source.instructor_id,
+      ]
+    );
+    newCourse = cRows[0];
+
+    // 2. Clone sections + lessons + quizzes + assignments
+    const { rows: sections } = await client.query(
+      'SELECT * FROM sections WHERE course_id = $1 ORDER BY sort_order',
+      [source.id]
+    );
+
+    for (const sec of sections) {
+      const { rows: newSecRows } = await client.query(
+        `INSERT INTO sections (course_id, title, description, sort_order)
+         VALUES ($1,$2,$3,$4) RETURNING *`,
+        [newCourse.id, sec.title, sec.description, sec.sort_order]
+      );
+      const newSec = newSecRows[0];
+
+      // Clone lessons in this section
+      const { rows: lessons } = await client.query(
+        `SELECT * FROM lessons WHERE section_id = $1 AND deleted_at IS NULL ORDER BY sort_order`,
+        [sec.id]
+      );
+
+      for (const lesson of lessons) {
+        const { rows: newLessonRows } = await client.query(
+          `INSERT INTO lessons
+             (section_id, course_id, title, type, content,
+              video_file_id, duration_seconds, sort_order, is_published)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false)
+           RETURNING *`,
+          [
+            newSec.id, newCourse.id, lesson.title, lesson.type,
+            lesson.content, lesson.video_file_id,
+            lesson.duration_seconds, lesson.sort_order,
+          ]
+        );
+        const newLesson = newLessonRows[0];
+
+        // Clone quiz if exists
+        const { rows: quizzes } = await client.query(
+          'SELECT * FROM quizzes WHERE lesson_id = $1',
+          [lesson.id]
+        );
+        for (const quiz of quizzes) {
+          const { rows: newQuizRows } = await client.query(
+            `INSERT INTO quizzes
+               (lesson_id, course_id, title, description,
+                max_attempts, time_limit_mins, passing_score_pct,
+                shuffle_questions, shuffle_options, show_answers_after,
+                is_published)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false)
+             RETURNING *`,
+            [
+              newLesson.id, newCourse.id, quiz.title, quiz.description,
+              quiz.max_attempts, quiz.time_limit_mins, quiz.passing_score_pct,
+              quiz.shuffle_questions, quiz.shuffle_options,
+              quiz.show_answers_after,
+            ]
+          );
+          const newQuiz = newQuizRows[0];
+
+          // Clone quiz questions
+          const { rows: questions } = await client.query(
+            'SELECT * FROM quiz_questions WHERE quiz_id = $1 ORDER BY sort_order',
+            [quiz.id]
+          );
+          for (const q of questions) {
+            await client.query(
+              `INSERT INTO quiz_questions
+                 (quiz_id, type, question_text, options, model_answer,
+                  explanation, points, sort_order)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+              [newQuiz.id, q.type, q.question_text, q.options,
+               q.model_answer, q.explanation, q.points, q.sort_order]
+            );
+          }
+        }
+
+        // Clone assignment if exists
+        const { rows: assignments } = await client.query(
+          'SELECT * FROM assignments WHERE lesson_id = $1',
+          [lesson.id]
+        );
+        for (const assign of assignments) {
+          const { rows: newAssignRows } = await client.query(
+            `INSERT INTO assignments
+               (lesson_id, course_id, title, instructions,
+                max_score, passing_score, allow_text_submission,
+                allow_file_submission, max_file_size_mb,
+                allowed_file_types, max_files, is_published, is_group_assignment)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,false,$12)
+             RETURNING *`,
+            [
+              newLesson.id, newCourse.id, assign.title, assign.instructions,
+              assign.max_score, assign.passing_score,
+              assign.allow_text_submission, assign.allow_file_submission,
+              assign.max_file_size_mb, assign.allowed_file_types,
+              assign.max_files, assign.is_group_assignment,
+            ]
+          );
+          const newAssign = newAssignRows[0];
+
+          // Clone rubric
+          const { rows: rubrics } = await client.query(
+            'SELECT * FROM assignment_rubrics WHERE assignment_id = $1',
+            [assign.id]
+          );
+          for (const rub of rubrics) {
+            const { rows: newRubRows } = await client.query(
+              `INSERT INTO assignment_rubrics
+                 (assignment_id, name, description, max_score)
+               VALUES ($1,$2,$3,$4) RETURNING *`,
+              [newAssign.id, rub.name, rub.description, rub.max_score]
+            );
+            const newRub = newRubRows[0];
+
+            // Clone rubric criteria
+            const { rows: criteria } = await client.query(
+              'SELECT * FROM rubric_criteria WHERE rubric_id = $1 ORDER BY sort_order',
+              [rub.id]
+            );
+            for (const crit of criteria) {
+              await client.query(
+                `INSERT INTO rubric_criteria
+                   (rubric_id, description, max_score, sort_order)
+                 VALUES ($1,$2,$3,$4)`,
+                [newRub.id, crit.description, crit.max_score, crit.sort_order]
+              );
+            }
+          }
+        }
+
+        // Clone lesson resources
+        const { rows: resources } = await client.query(
+          'SELECT * FROM lesson_resources WHERE lesson_id = $1 ORDER BY sort_order',
+          [lesson.id]
+        );
+        for (const res of resources) {
+          await client.query(
+            `INSERT INTO lesson_resources
+               (lesson_id, file_id, title, sort_order)
+             VALUES ($1,$2,$3,$4)`,
+            [newLesson.id, res.file_id, res.title, res.sort_order]
+          );
+        }
+
+        // Clone lesson availability
+        const { rows: avail } = await client.query(
+          'SELECT * FROM lesson_availability WHERE lesson_id = $1',
+          [lesson.id]
+        );
+        for (const a of avail) {
+          await client.query(
+            `INSERT INTO lesson_availability (lesson_id, conditions)
+             VALUES ($1,$2)`,
+            [newLesson.id, typeof a.conditions === 'string' ? a.conditions : JSON.stringify(a.conditions)]
+          );
+        }
+      }
+    }
+
+    // 3. Clone question bank categories + questions
+    const { rows: bankCats } = await client.query(
+      'SELECT * FROM question_bank_categories WHERE course_id = $1',
+      [source.id]
+    );
+    for (const cat of bankCats) {
+      const { rows: newCatRows } = await client.query(
+        `INSERT INTO question_bank_categories (course_id, name)
+         VALUES ($1,$2) RETURNING *`,
+        [newCourse.id, cat.name]
+      );
+      const newCat = newCatRows[0];
+
+      const { rows: bankQs } = await client.query(
+        'SELECT * FROM question_bank WHERE category_id = $1',
+        [cat.id]
+      );
+      for (const q of bankQs) {
+        await client.query(
+          `INSERT INTO question_bank
+             (category_id, type, question_text, options, model_answer,
+              explanation, points)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [newCat.id, q.type, q.question_text, q.options,
+           q.model_answer, q.explanation, q.points]
+        );
+      }
+    }
+
+    // 4. Clone course announcements
+    const { rows: announcements } = await client.query(
+      'SELECT * FROM course_announcements WHERE course_id = $1',
+      [source.id]
+    );
+    for (const ann of announcements) {
+      await client.query(
+        `INSERT INTO course_announcements (course_id, instructor_id, title, body)
+         VALUES ($1,$2,$3,$4)`,
+        [newCourse.id, ann.instructor_id, ann.title, ann.body]
+      );
+    }
+
+    // 5. Clone course groups (without members)
+    const { rows: groups } = await client.query(
+      'SELECT * FROM course_groups WHERE course_id = $1',
+      [source.id]
+    );
+    for (const g of groups) {
+      await client.query(
+        `INSERT INTO course_groups (course_id, name, description, max_members)
+         VALUES ($1,$2,$3,$4)`,
+        [newCourse.id, g.name, g.description, g.max_members]
+      );
+    }
+
+    // Audit log
+    await client.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, after_data)
+       VALUES ($1, 'course.cloned', 'course', $2, $3)`,
+      [requestingUser.id, newCourse.id,
+       JSON.stringify({ sourceId: source.id, sourceTitle: source.title })]
+    );
+  });
+
+  // Invalidate caches (fire-and-forget)
+  invalidateCourseListCache().catch(() => {});
+  eventBus.emit('course.cloned', { courseId: newCourse.id, sourceId: source.id, userId: requestingUser.id });
+
+  return newCourse;
+}
 async function uploadThumbnail(courseId, uploadedFile, uploadedBy, requestingUser) {
   const { rows } = await db.query(
     'SELECT id, instructor_id FROM courses WHERE id = $1 AND deleted_at IS NULL',
@@ -497,7 +759,7 @@ async function invalidateCourseListCache() {
 
 module.exports = {
   listCourses, getCourse, createCourse, updateCourse,
-  publishCourse, unpublishCourse, deleteCourse,
+  publishCourse, unpublishCourse, deleteCourse, cloneCourse,
   uploadThumbnail, listCategories,
   createSection, updateSection, deleteSection, reorderSections,
   getMyCourses, getAllCoursesForAdmin,

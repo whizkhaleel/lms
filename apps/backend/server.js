@@ -27,8 +27,14 @@ const submissionRoutes  = require('./modules/submissions/submissions.routes');
 const forumRoutes       = require('./modules/forums/forums.routes');
 const messageRoutes     = require('./modules/messages/messages.routes');
 const notificationRoutes = require('./modules/notifications/notifications.routes');
+const announcementRoutes = require('./modules/announcements/announcements.routes');
+const questionBankRoutes = require('./modules/question-bank/question-bank.routes');
+const courseGroupRoutes  = require('./modules/course-groups/course-groups.routes');
 const certificateRoutes  = require('./modules/certificates/certificates.routes');
 const paymentWebhookRoutes = require('./modules/enrollments/payment-webhook.routes');
+const calendarRoutes       = require('./modules/calendar/calendar.routes');
+const scormRoutes          = require('./modules/scorm/scorm.routes');
+const ltiRoutes            = require('./modules/lti/lti.routes');
 
 const app    = express();
 const server = http.createServer(app);
@@ -95,7 +101,10 @@ app.use('/api/v1/files',                       fileRoutes);
 app.use('/api/v1/courses',                     courseRoutes);
 app.use('/api/v1/courses/:courseId/lessons',   lessonRoutes);
 app.use('/api/v1/courses/:courseId/forums',    forumRoutes);   // ← Phase 6
-app.use('/api/v1/enrollments',                 enrollmentRoutes);
+app.use('/api/v1/courses/:courseId/announcements', announcementRoutes);
+app.use('/api/v1/courses/:courseId/question-bank', questionBankRoutes);
+app.use('/api/v1/courses/:courseId/groups',        courseGroupRoutes);
+app.use('/api/v1/enrollments',                     enrollmentRoutes);
 app.use('/api/v1/progress',                    progressRoutes);
 app.use('/api/v1/assessments',                 assessmentRoutes);
 app.use('/api/v1/submissions',                 submissionRoutes);
@@ -103,6 +112,9 @@ app.use('/api/v1/messages',                    messageRoutes);        // ← Pha
 app.use('/api/v1/notifications',               notificationRoutes);   // ← Phase 6
 app.use('/api/v1/certificates',                certificateRoutes);    // ← Phase 8
 app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← External payment gateway
+app.use('/api/v1/calendar',                      calendarRoutes);
+app.use('/api/v1/scorm',                        scormRoutes);
+app.use('/api/v1/lti',                          ltiRoutes);
 app.use('/api/v1/admin',                        adminRoutes);           // ← Phase 9
 
 // ── 404 ───────────────────────────────────────

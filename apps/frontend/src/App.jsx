@@ -13,6 +13,7 @@ const LoginPage           = lazy(() => import('./features/auth/pages/LoginPage')
 const ForgotPasswordPage  = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage   = lazy(() => import('./features/auth/pages/ForgotPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const ChangePasswordPage  = lazy(() => import('./features/auth/pages/ChangePasswordPage'));
+const VerifyEmailPage     = lazy(() => import('./features/auth/pages/VerifyEmailPage'));
 const StudentDashboard    = lazy(() => import('./features/dashboard/StudentDashboard'));
 const CourseCatalogPage   = lazy(() => import('./features/courses/pages/CourseCatalogPage'));
 const CourseDetailPage    = lazy(() => import('./features/courses/pages/CourseDetailPage'));
@@ -29,12 +30,20 @@ const AdminEnrollmentsPage = lazy(() => import('./features/admin/pages/AdminEnro
 const AdminAnalyticsPage = lazy(() => import('./features/admin/pages/AdminAnalyticsPage'));
 const AuditLogPage       = lazy(() => import('./features/admin/pages/AuditLogPage'));
 const AdminSettingsPage  = lazy(() => import('./features/admin/pages/AdminSettingsPage'));
+const PaymentGatewayPage = lazy(() => import('./features/admin/pages/PaymentGatewayPage'));
 const InstructorAnalyticsPage = lazy(() => import('./features/instructor/pages/InstructorAnalyticsPage'));
 const CourseAnalyticsPage = lazy(() => import('./features/instructor/pages/CourseAnalyticsPage'));
 const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseBuilderPage'));
+const QuestionBankPage   = lazy(() => import('./features/instructor/pages/QuestionBankPage'));
+const CourseGroupsPage   = lazy(() => import('./features/instructor/pages/CourseGroupsPage'));
+const CourseCertificatesPage = lazy(() => import('./features/instructor/pages/CourseCertificatesPage'));
+const InstructorGradebookPage = lazy(() => import('./features/instructor/pages/InstructorGradebookPage'));
 const SubmissionsPage = lazy(() => import('./features/instructor/pages/SubmissionsPage'));
+const ForumThreadsPage = lazy(() => import('./features/forums/pages/ForumThreadsPage'));
+const ForumThreadDetailPage = lazy(() => import('./features/forums/pages/ForumThreadDetailPage'));
 const CertificatesPage = lazy(() => import('./features/certificates/pages/CertificatesPage'));
 const LeaderboardPage = lazy(() => import('./features/certificates/pages/LeaderboardPage'));
+const CalendarPage = lazy(() => import('./features/calendar/pages/CalendarPage'));
 
 // Connect Socket.io once the user is known
 function SocketInit() {
@@ -60,6 +69,7 @@ export default function App() {
             <Route path="/login"           element={<GuestOnly><LoginPage /></GuestOnly>} />
             <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
             <Route path="/reset-password"  element={<GuestOnly><ResetPasswordPage /></GuestOnly>} />
+            <Route path="/verify-email"    element={<VerifyEmailPage />} />
           </Route>
 
           {/* ── Forced/voluntary password change (logged in, centered) ── */}
@@ -70,6 +80,8 @@ export default function App() {
           {/* ── Classroom (full width, requires login) ── */}
           <Route element={<RequireAuth />}>
             <Route element={<ClassroomLayout />}>
+              <Route path="/learn/:courseId/forums/:threadId" element={<ForumThreadDetailPage />} />
+              <Route path="/learn/:courseId/forums"           element={<ForumThreadsPage />} />
               <Route path="/learn/:courseId"                   element={<ClassroomPage />} />
               <Route path="/learn/:courseId/lessons/:lessonId" element={<ClassroomPage />} />
             </Route>
@@ -89,6 +101,7 @@ export default function App() {
               <Route path="/profile"       element={<ProfilePage />} />
               <Route path="/messages"      element={<MessagesPage />} />
               <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/calendar"      element={<CalendarPage />} />
               <Route path="/achievements"  element={<CertificatesPage />} />
               <Route path="/leaderboard"   element={<LeaderboardPage />} />
             </Route>
@@ -97,9 +110,14 @@ export default function App() {
             <Route element={<RequireAuth />}>
               <Route element={<RequireRole roles={['instructor','admin','super_admin']} />}>
                 <Route path="/instructor"                       element={<InstructorDashboard />} />
+                <Route path="/instructor/gradebook"            element={<InstructorGradebookPage />} />
                 <Route path="/instructor/courses"              element={<Navigate to="/instructor" replace />} />
                 <Route path="/instructor/courses/:id/edit"      element={<CourseBuilderPage />} />
+                <Route path="/instructor/courses/:id/question-bank" element={<QuestionBankPage />} />
+                <Route path="/instructor/courses/:id/groups"       element={<CourseGroupsPage />} />
                 <Route path="/instructor/courses/:id/analytics" element={<CourseAnalyticsPage />} />
+                <Route path="/instructor/courses/:id/certificates" element={<CourseCertificatesPage />} />
+                <Route path="/instructor/courses/:id/gradebook" element={<InstructorGradebookPage />} />
                 <Route path="/instructor/submissions"           element={<SubmissionsPage />} />
                 <Route path="/instructor/analytics"             element={<InstructorAnalyticsPage />} />
               </Route>
@@ -115,6 +133,7 @@ export default function App() {
                 <Route path="/admin/enrollments" element={<AdminEnrollmentsPage />} />
                 <Route path="/admin/analytics"   element={<AdminAnalyticsPage />} />
                 <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+                <Route path="/admin/payments"  element={<PaymentGatewayPage />} />
                 <Route path="/admin/settings"   element={<AdminSettingsPage />} />
               </Route>
             </Route>
