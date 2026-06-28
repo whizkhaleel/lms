@@ -86,7 +86,7 @@ async function createLesson(courseId, sectionId, data, requestingUser) {
       data.content || null,
       data.durationSeconds || 0,
       orderRows[0].next,
-      data.isPublished || false,
+      data.isPublished !== undefined ? data.isPublished : true,
     ]
   );
 
@@ -132,6 +132,24 @@ async function getLesson(lessonId, courseId, requestingUser) {
 
     if (!isOwner) {
       throw ApiError.forbidden('You must be enrolled to access this lesson');
+    }
+  }
+
+  // Check course date restrictions for non-owners
+  if (!isOwner) {
+    const { rows: courseRows } = await db.query(
+      'SELECT start_date, end_date FROM courses WHERE id = $1',
+      [courseId]
+    );
+    const course = courseRows[0];
+    const now = new Date();
+    if (course) {
+      if (course.start_date && new Date(course.start_date) > now) {
+        throw ApiError.forbidden(`This course starts on ${new Date(course.start_date).toLocaleDateString()}`);
+      }
+      if (course.end_date && new Date(course.end_date) < now) {
+        throw ApiError.forbidden('This course has ended');
+      }
     }
   }
 

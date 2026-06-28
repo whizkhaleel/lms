@@ -37,6 +37,7 @@ const CourseBuilderPage = lazy(() => import('./features/instructor/pages/CourseB
 const QuestionBankPage   = lazy(() => import('./features/instructor/pages/QuestionBankPage'));
 const CourseGroupsPage   = lazy(() => import('./features/instructor/pages/CourseGroupsPage'));
 const CourseCertificatesPage = lazy(() => import('./features/instructor/pages/CourseCertificatesPage'));
+const InstructorStudentsPage = lazy(() => import('./features/instructor/pages/InstructorStudentsPage'));
 const InstructorGradebookPage = lazy(() => import('./features/instructor/pages/InstructorGradebookPage'));
 const SubmissionsPage = lazy(() => import('./features/instructor/pages/SubmissionsPage'));
 const ForumThreadsPage = lazy(() => import('./features/forums/pages/ForumThreadsPage'));
@@ -118,6 +119,7 @@ export default function App() {
                 <Route path="/instructor/courses/:id/analytics" element={<CourseAnalyticsPage />} />
                 <Route path="/instructor/courses/:id/certificates" element={<CourseCertificatesPage />} />
                 <Route path="/instructor/courses/:id/gradebook" element={<InstructorGradebookPage />} />
+                <Route path="/instructor/students"              element={<InstructorStudentsPage />} />
                 <Route path="/instructor/submissions"           element={<SubmissionsPage />} />
                 <Route path="/instructor/analytics"             element={<InstructorAnalyticsPage />} />
               </Route>

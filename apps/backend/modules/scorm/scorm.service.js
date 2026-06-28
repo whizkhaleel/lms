@@ -205,7 +205,37 @@ async function getPackage(packageId) {
 }
 
 // ── Get package by lesson ──────────────────────
-async function getPackageByLesson(lessonId, courseId) {
+async function getPackageByLesson(lessonId, courseId, requestingUser) {
+  // Verify enrollment + date restrictions for non-owner
+  if (requestingUser.role !== 'admin' && requestingUser.role !== 'super_admin') {
+    const { rows: isOwner } = await db.query(
+      'SELECT id FROM courses WHERE id = $1 AND instructor_id = $2',
+      [courseId, requestingUser.id]
+    );
+    if (!isOwner[0]) {
+      const { rows: enr } = await db.query(
+        'SELECT id FROM enrollments WHERE user_id = $1 AND course_id = $2 AND status = \'active\'',
+        [requestingUser.id, courseId]
+      );
+      if (!enr[0]) throw ApiError.forbidden('You must be enrolled to access this content');
+
+      const { rows: courseRows } = await db.query(
+        'SELECT start_date, end_date FROM courses WHERE id = $1',
+        [courseId]
+      );
+      const course = courseRows[0];
+      const now = new Date();
+      if (course) {
+        if (course.start_date && new Date(course.start_date) > now) {
+          throw ApiError.forbidden(`This course starts on ${new Date(course.start_date).toLocaleDateString()}`);
+        }
+        if (course.end_date && new Date(course.end_date) < now) {
+          throw ApiError.forbidden('This course has ended');
+        }
+      }
+    }
+  }
+
   const { rows } = await db.query(
     'SELECT * FROM scorm_packages WHERE lesson_id = $1 AND course_id = $2',
     [lessonId, courseId]

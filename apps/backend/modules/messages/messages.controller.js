@@ -55,7 +55,14 @@ async function getUnreadCount(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function getContacts(req, res, next) {
+  try {
+    const contacts = await service.getContacts(req.user.id, req.user.role);
+    ApiResponse.success(res, { contacts });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   getConversations, getMessages, sendMessage,
-  deleteMessage, getUnreadCount,
+  deleteMessage, getUnreadCount, getContacts,
 };

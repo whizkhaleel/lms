@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Save } from 'lucide-react';
+import { Settings, Save, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
@@ -19,8 +19,23 @@ export default function AdminSettingsPage() {
     onSuccess: () => {
       toast.success('Settings saved');
       queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['institution-settings'] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to save settings'),
+  });
+
+  const logoUploadMut = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('logo', file);
+      return api.post('/admin/settings/logo', fd);
+    },
+    onSuccess: (res) => {
+      toast.success('Logo uploaded');
+      queryClient.invalidateQueries({ queryKey: ['admin-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['institution-settings'] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Logo upload failed'),
   });
 
   const handleSubmit = (e) => {
@@ -40,7 +55,6 @@ export default function AdminSettingsPage() {
     { key: 'institution_phone',    label: 'Phone',               type: 'text' },
     { key: 'institution_address',  label: 'Address',             type: 'text' },
     { key: 'institution_website',  label: 'Website',             type: 'url' },
-    { key: 'institution_logo_url', label: 'Logo URL',            type: 'url' },
     { key: 'academic_year',        label: 'Academic Year',       type: 'text' },
     { key: 'default_timezone',     label: 'Default Timezone',    type: 'text' },
   ];
@@ -53,6 +67,30 @@ export default function AdminSettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-2xl flex flex-col gap-4">
+
+        {/* Logo upload */}
+        <div className="card">
+          <label className="text-sm font-medium text-gray-300 mb-2 block">Institution Logo</label>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-[#1A6FBF] rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+              {s.institution_logo_url ? (
+                <img src={s.institution_logo_url} alt="Logo" className="w-full h-full object-cover" />
+              ) : (
+                <Settings size={24} className="text-white" />
+              )}
+            </div>
+            <div className="flex-1">
+              <input type="file" accept="image/*" onChange={e => {
+                if (e.target.files[0]) logoUploadMut.mutate(e.target.files[0]);
+              }} className="text-sm text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#1A6FBF] file:text-white file:text-sm" />
+              {logoUploadMut.isPending && <Spinner size="sm" />}
+              {s.institution_logo_url && (
+                <p className="text-xs text-gray-500 mt-1">Current logo URL: {s.institution_logo_url}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {fields.map(({ key, label, type }) => (
           <Input key={key} label={label} name={key} type={type}
             defaultValue={s[key] || ''} />

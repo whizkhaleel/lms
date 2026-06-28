@@ -67,7 +67,7 @@ async function createUser(req, res, next) {
           firstName,
           email,
           tempPassword,
-          courseTitle: role === 'instructor' ? 'the LMS platform' : 'your courses',
+          courseTitle: role === 'instructor' ? 'Shaheed Mahmoud Academy' : 'your courses',
         }),
       });
     } catch (mailErr) {

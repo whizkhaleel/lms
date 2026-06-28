@@ -248,6 +248,43 @@ async function deleteMessage(messageId, userId) {
   if (!rows[0]) throw ApiError.notFound('Message not found or already deleted');
 }
 
+// ── Get contacts the user can message ─────────
+async function getContacts(userId, userRole) {
+  if (userRole === 'admin') {
+    const { rows } = await db.query(
+      `SELECT id, first_name, last_name, role
+       FROM users WHERE deleted_at IS NULL
+       ORDER BY first_name, last_name`
+    );
+    return rows;
+  }
+
+  if (userRole === 'instructor') {
+    const { rows } = await db.query(
+      `SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
+       FROM users u
+       JOIN enrollments e ON e.user_id = u.id AND e.status = 'active'
+       JOIN courses c ON c.id = e.course_id AND c.instructor_id = $1 AND c.deleted_at IS NULL
+       WHERE u.deleted_at IS NULL AND u.role = 'student'
+       ORDER BY u.first_name, u.last_name`,
+      [userId]
+    );
+    return rows;
+  }
+
+  // Student — instructors of enrolled courses
+  const { rows } = await db.query(
+    `SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
+     FROM users u
+     JOIN courses c ON c.instructor_id = u.id AND c.deleted_at IS NULL
+     JOIN enrollments e ON e.course_id = c.id AND e.user_id = $1 AND e.status = 'active'
+     WHERE u.deleted_at IS NULL
+     ORDER BY u.first_name, u.last_name`,
+    [userId]
+  );
+  return rows;
+}
+
 // ── Get total unread DM count ─────────────────
 async function getUnreadCount(userId) {
   const { rows } = await db.query(
@@ -264,4 +301,5 @@ async function getUnreadCount(userId) {
 module.exports = {
   getConversations, getMessages, sendMessage,
   deleteMessage, getUnreadCount, getOrCreateConversation,
+  getContacts,
 };

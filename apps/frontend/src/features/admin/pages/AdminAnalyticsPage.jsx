@@ -31,7 +31,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-display font-bold text-2xl text-white">Platform Analytics</h1>
+        <h1 className="font-display font-bold text-2xl text-white">Academy Analytics</h1>
         <p className="text-gray-400 text-sm mt-1">Revenue, engagement, and completion metrics</p>
       </div>
 

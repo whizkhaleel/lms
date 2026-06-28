@@ -32,6 +32,24 @@ async function getEnrollment(userId, courseId) {
   return rows[0];
 }
 
+// ── Check course date restrictions ────────────
+async function checkCourseDates(courseId) {
+  const { rows } = await db.query(
+    `SELECT start_date, end_date FROM courses WHERE id = $1`,
+    [courseId]
+  );
+  if (!rows[0]) return {};
+  const { start_date, end_date } = rows[0];
+  const now = new Date();
+  if (start_date && new Date(start_date) > now) {
+    throw ApiError.forbidden(`This course starts on ${new Date(start_date).toLocaleDateString()}`);
+  }
+  if (end_date && new Date(end_date) < now) {
+    throw ApiError.forbidden('This course has ended');
+  }
+  return { start_date, end_date };
+}
+
 async function resolveLesson(lessonId, courseId = null) {
   const query = courseId
     ? `SELECT id, course_id, duration_seconds
@@ -63,6 +81,7 @@ async function resolveLesson(lessonId, courseId = null) {
 async function heartbeat({ userId, lessonId, courseId = null, positionSecs, watchedSecs }) {
   const lesson = await resolveLesson(lessonId, courseId);
   const enrollment = await getEnrollment(userId, lesson.course_id);
+  await checkCourseDates(lesson.course_id);
 
   const duration = lesson.duration_seconds || 0;
   const shouldComplete = duration > 0 && watchedSecs >= duration * 0.8;
@@ -287,41 +306,43 @@ async function getLessonProgress(userId, lessonId, courseId = null) {
 // ─────────────────────────────────────────────
 async function getCourseProgress(userId, courseId) {
   await getEnrollment(userId, courseId);
+  await checkCourseDates(courseId);
 
   // Course-level snapshot
   const { rows: snapRows } = await db.query(
     `SELECT cp.*,
-            c.title AS course_title, c.lesson_count, c.duration_seconds
+            c.title AS course_title, c.duration_seconds
      FROM course_progress cp
      JOIN courses c ON c.id = cp.course_id
      WHERE cp.user_id = $1 AND cp.course_id = $2`,
     [userId, courseId]
   );
 
-  if (!snapRows[0]) {
-    return { percent_complete: 0, completed_lessons: 0, total_lessons: 0, lessons: [] };
-  }
-
   // Per-lesson breakdown (for the sidebar checklist)
   const { rows: lessonRows } = await db.query(
     `SELECT
-       l.id, l.title, l.type, l.duration_seconds,
-       l.sort_order, s.title AS section_title, s.sort_order AS section_order,
-       COALESCE(lp.is_completed,        false) AS is_completed,
-       COALESCE(lp.watch_position_secs, 0)     AS watch_position_secs,
-       COALESCE(lp.watched_secs,        0)     AS watched_secs,
-       lp.completed_at,
-       lp.last_watched_at
-     FROM lessons l
-     JOIN sections s ON s.id = l.section_id
-     LEFT JOIN lesson_progress lp
-       ON lp.lesson_id = l.id AND lp.user_id = $1
-     WHERE l.course_id = $2
-       AND l.is_published = true
-       AND l.deleted_at IS NULL
-     ORDER BY s.sort_order, l.sort_order`,
+        l.id, l.title, l.type, l.duration_seconds,
+        l.sort_order, s.title AS section_title, s.sort_order AS section_order,
+        COALESCE(lp.is_completed,        false) AS is_completed,
+        COALESCE(lp.watch_position_secs, 0)     AS watch_position_secs,
+        COALESCE(lp.watched_secs,        0)     AS watched_secs,
+        lp.completed_at,
+        lp.last_watched_at
+      FROM lessons l
+      JOIN sections s ON s.id = l.section_id
+      LEFT JOIN lesson_progress lp
+        ON lp.lesson_id = l.id AND lp.user_id = $1
+      WHERE l.course_id = $2
+        AND l.is_published = true
+        AND l.deleted_at IS NULL
+      ORDER BY s.sort_order, l.sort_order`,
     [userId, courseId]
   );
+
+  // Compute actual totals from live lesson data (not stale course_progress)
+  const totalLessons = lessonRows.length;
+  const completedLessons = lessonRows.filter(l => l.is_completed).length;
+  const percentComplete = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
   // Find the "continue" lesson — first accessible incomplete one
   const lessonAvail = await avail.evaluateCourseAvailability(userId, courseId);
@@ -335,8 +356,13 @@ async function getCourseProgress(userId, courseId) {
     || lessonRows.find(l => !l.is_completed)
     || null;
 
+  const snapshot = snapRows[0] || {};
   return {
-    ...snapRows[0],
+    ...snapshot,
+    total_lessons: totalLessons,
+    completed_lessons: completedLessons,
+    percent_complete: percentComplete,
+    course_title: snapshot.course_title || '',
     nextLessonId: nextLesson?.id || null,
     lessons: lessonsWithAccess,
     availability: lessonAvail,
@@ -350,32 +376,33 @@ async function getCourseProgress(userId, courseId) {
 async function getDashboard(userId) {
   const { rows } = await db.query(
     `SELECT
-       e.id            AS enrollment_id,
-       e.enrolled_at,
-       e.status        AS enrollment_status,
-       c.id            AS course_id,
-       c.title, c.slug, c.level, c.lesson_count, c.duration_seconds,
-       u.first_name || ' ' || u.last_name AS instructor_name,
-       f.storage_path  AS thumbnail_path,
-       COALESCE(cp.percent_complete,   0)  AS percent_complete,
-       COALESCE(cp.completed_lessons,  0)  AS completed_lessons,
-       COALESCE(cp.total_watched_secs, 0)  AS total_watched_secs,
-       cp.is_completed,
-       cp.completed_at,
-       cp.current_streak_days,
-       cp.last_activity_date,
-       -- last lesson the student was watching
-       (SELECT lp2.lesson_id FROM lesson_progress lp2
-        WHERE lp2.user_id = $1 AND lp2.course_id = c.id
-        ORDER BY lp2.last_watched_at DESC LIMIT 1) AS last_lesson_id
-     FROM enrollments e
-     JOIN courses c ON c.id = e.course_id
-     JOIN users u   ON u.id = c.instructor_id
-     LEFT JOIN files f         ON f.id = c.thumbnail_file_id
-     LEFT JOIN course_progress cp
-       ON cp.user_id = e.user_id AND cp.course_id = e.course_id
-     WHERE e.user_id = $1 AND e.status = 'active'
-     ORDER BY COALESCE(cp.last_activity_date, e.enrolled_at::date) DESC`,
+        e.id            AS enrollment_id,
+        e.enrolled_at,
+        e.status        AS enrollment_status,
+        c.id            AS course_id,
+        c.title, c.slug, c.level, c.lesson_count, c.duration_seconds,
+        c.start_date, c.end_date,
+        u.first_name || ' ' || u.last_name AS instructor_name,
+        f.storage_path  AS thumbnail_path,
+        COALESCE(cp.percent_complete,   0)  AS percent_complete,
+        COALESCE(cp.completed_lessons,  0)  AS completed_lessons,
+        COALESCE(cp.total_watched_secs, 0)  AS total_watched_secs,
+        cp.is_completed,
+        cp.completed_at,
+        cp.current_streak_days,
+        cp.last_activity_date,
+        -- last lesson the student was watching
+        (SELECT lp2.lesson_id FROM lesson_progress lp2
+         WHERE lp2.user_id = $1 AND lp2.course_id = c.id
+         ORDER BY lp2.last_watched_at DESC LIMIT 1) AS last_lesson_id
+      FROM enrollments e
+      JOIN courses c ON c.id = e.course_id
+      JOIN users u   ON u.id = c.instructor_id
+      LEFT JOIN files f         ON f.id = c.thumbnail_file_id
+      LEFT JOIN course_progress cp
+        ON cp.user_id = e.user_id AND cp.course_id = e.course_id
+      WHERE e.user_id = $1 AND e.status = 'active'
+      ORDER BY COALESCE(cp.last_activity_date, e.enrolled_at::date) DESC`,
     [userId]
   );
 

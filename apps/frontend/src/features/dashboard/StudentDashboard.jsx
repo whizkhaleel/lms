@@ -235,9 +235,17 @@ function CourseCard({ course }) {
   const pct = course.percent_complete ?? 0;
   const isComplete = course.is_completed;
 
+  const now = new Date();
+  const startDate = course.start_date ? new Date(course.start_date) : null;
+  const endDate = course.end_date ? new Date(course.end_date) : null;
+  const notStarted = startDate && startDate > now;
+  const hasEnded = endDate && endDate < now;
+
   const continueUrl = course.last_lesson_id
     ? `/learn/${course.course_id}/lessons/${course.last_lesson_id}`
     : `/learn/${course.course_id}`;
+
+  const buttonDisabled = notStarted || hasEnded;
 
   return (
     <div className="card overflow-hidden flex flex-col hover:border-gray-600 transition-colors group">
@@ -267,6 +275,16 @@ function CourseCard({ course }) {
             <Flame size={12} /> {course.current_streak_days}d
           </div>
         )}
+        {notStarted && (
+          <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            Starts {format(startDate, 'MMM d')}
+          </div>
+        )}
+        {hasEnded && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+            Ended {format(endDate, 'MMM d')}
+          </div>
+        )}
       </div>
 
       {/* Body */}
@@ -276,33 +294,41 @@ function CourseCard({ course }) {
         </h3>
         <p className="text-xs text-gray-500 mb-3">{course.instructor_name}</p>
 
-        <div className="mt-auto">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>{course.completed_lessons} / {course.lesson_count} lessons</span>
-            <span className={isComplete ? 'text-green-400' : 'text-blue-400'}>{pct}%</span>
+        {!notStarted && !hasEnded && (
+          <div className="mt-auto">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span>{course.completed_lessons} / {course.lesson_count} lessons</span>
+              <span className={isComplete ? 'text-green-400' : 'text-blue-400'}>{pct}%</span>
+            </div>
+            <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${
+                  isComplete ? 'bg-green-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
-          <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ${
-                isComplete ? 'bg-green-500' : 'bg-blue-500'
-              }`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
+        )}
 
-        <Link
-          to={continueUrl}
-          className={`mt-4 w-full text-center py-2 rounded-lg text-sm font-medium transition-colors ${
-            isComplete
-              ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-              : pct > 0
-              ? 'bg-blue-600 hover:bg-blue-700 text-white'
-              : 'bg-gray-700 hover:bg-gray-600 text-white'
-          }`}
-        >
-          {isComplete ? 'Review Course' : pct > 0 ? 'Continue' : 'Start Course'}
-        </Link>
+        {buttonDisabled ? (
+          <div className={`mt-4 w-full text-center py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-500 cursor-not-allowed`}>
+            {notStarted ? `Starts ${format(startDate, 'MMM d, yyyy')}` : 'Course Ended'}
+          </div>
+        ) : (
+          <Link
+            to={continueUrl}
+            className={`mt-4 w-full text-center py-2 rounded-lg text-sm font-medium transition-colors ${
+              isComplete
+                ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                : pct > 0
+                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                : 'bg-gray-700 hover:bg-gray-600 text-white'
+            }`}
+          >
+            {isComplete ? 'Review Course' : pct > 0 ? 'Continue' : 'Start Course'}
+          </Link>
+        )}
       </div>
     </div>
   );

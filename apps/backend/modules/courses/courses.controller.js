@@ -7,16 +7,20 @@ const ApiError    = require('../../shared/utils/apiError');
 
 // ── Validation schemas ────────────────────────
 const courseSchema = Joi.object({
-  title:            Joi.string().trim().min(5).max(255).required(),
-  description:      Joi.string().max(5000),
-  shortDescription: Joi.string().max(500),
-  categoryId:       Joi.string().uuid(),
-  level:            Joi.string().valid('beginner', 'intermediate', 'advanced'),
-  language:         Joi.string().max(50),
-  tags:             Joi.array().items(Joi.string()).max(10),
-  requirements:     Joi.array().items(Joi.string()).max(20),
-  objectives:       Joi.array().items(Joi.string()).max(20),
-  instructorId:     Joi.string().uuid().required(),
+  title:                    Joi.string().trim().min(5).max(255).required(),
+  description:              Joi.string().max(5000),
+  shortDescription:         Joi.string().max(500),
+  categoryId:               Joi.string().uuid(),
+  level:                    Joi.string().valid('beginner', 'intermediate', 'advanced'),
+  language:                 Joi.string().max(50),
+  tags:                     Joi.array().items(Joi.string()).max(10),
+  requirements:             Joi.array().items(Joi.string()).max(20),
+  objectives:               Joi.array().items(Joi.string()).max(20),
+  instructorId:             Joi.string().uuid().required(),
+  startDate:                Joi.date().iso().allow(null),
+  endDate:                  Joi.date().iso().allow(null),
+  enableCompletionTracking: Joi.boolean(),
+  showGradesToStudent:      Joi.boolean(),
 });
 
 const sectionSchema = Joi.object({

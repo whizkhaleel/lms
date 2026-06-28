@@ -41,7 +41,7 @@ async function generateCertificatePdf(certNumber, userName, courseTitle, instruc
       size: 'A4',
       info: {
         Title: `Certificate of Completion - ${courseTitle}`,
-        Author: 'LMS Platform',
+        Author: 'Shaheed Mahmoud Academy',
       },
     });
 
@@ -107,7 +107,7 @@ async function generateCertificatePdf(certNumber, userName, courseTitle, instruc
     doc.moveTo(pageWidth - 350, pageHeight - 130)
       .lineTo(pageWidth - 150, pageHeight - 130)
       .stroke('#999');
-    doc.fontSize(10).fillColor('#666').text('LMS Platform', pageWidth - 350, pageHeight - 120);
+    doc.fontSize(10).fillColor('#666').text('Shaheed Mahmoud Academy', pageWidth - 350, pageHeight - 120);
     doc.fontSize(9).fillColor('#999').text('Authorized Signature', pageWidth - 350, pageHeight - 108);
 
     doc.end();

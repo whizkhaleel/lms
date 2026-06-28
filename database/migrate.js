@@ -144,7 +144,7 @@ async function main() {
   let client;
 
   try {
-    console.log('\nLMS Migration Runner');
+    console.log('\nShaheed Mahmoud Academy — Migration Runner');
     console.log('--------------------');
 
     client = await getClient();

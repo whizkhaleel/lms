@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-#  LMS — Docker Compose (Development)
+#  Shaheed Mahmoud Academy — Docker Compose (Development)
 #  Services: nginx, frontend, backend, postgres, redis, minio
 # ─────────────────────────────────────────────────────────────
 

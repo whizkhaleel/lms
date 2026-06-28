@@ -26,6 +26,21 @@ async function verifyEnrolled(userId, courseId) {
     [userId, courseId]
   );
   if (!rows[0]) throw ApiError.forbidden('You must be enrolled to submit this assignment');
+
+  const { rows: courseRows } = await db.query(
+    'SELECT start_date, end_date FROM courses WHERE id = $1',
+    [courseId]
+  );
+  const course = courseRows[0];
+  const now = new Date();
+  if (course) {
+    if (course.start_date && new Date(course.start_date) > now) {
+      throw ApiError.forbidden(`This course starts on ${new Date(course.start_date).toLocaleDateString()}`);
+    }
+    if (course.end_date && new Date(course.end_date) < now) {
+      throw ApiError.forbidden('This course has ended');
+    }
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -464,6 +479,17 @@ async function getGradebook(courseId, targetUserId, requestingUser) {
     throw ApiError.forbidden('Access denied');
   }
 
+  // Check show_grades_to_student for students
+  if (requestingUser.role === 'student') {
+    const { rows: courseRows } = await db.query(
+      'SELECT show_grades_to_student FROM courses WHERE id = $1',
+      [courseId]
+    );
+    if (courseRows[0] && !courseRows[0].show_grades_to_student) {
+      throw ApiError.forbidden('Grades are not visible to students for this course');
+    }
+  }
+
   const { rows } = await db.query(
     `SELECT
        g.id, g.grade_type, g.score, g.max_score, g.score_pct, g.passed, g.graded_at,
@@ -507,14 +533,18 @@ async function getCourseGradebook(courseId, requestingUser) {
     [courseId]
   );
 
-  // Get all graded lessons (columns)
+  // Get all graded-item lessons (columns) — quizzes & assignments, regardless of grades or publish status
   const { rows: columns } = await db.query(
-    `SELECT DISTINCT g.lesson_id, l.title AS lesson_title, l.type AS lesson_type, g.max_score,
+    `SELECT l.id AS lesson_id, l.title AS lesson_title, l.type AS lesson_type,
+            COALESCE(a.max_score, (SELECT COALESCE(SUM(points), 100) FROM quiz_questions WHERE quiz_id = qz.id), 100) AS max_score,
             s.title AS section_title
-     FROM grades g
-     JOIN lessons l ON l.id = g.lesson_id
+     FROM lessons l
      JOIN sections s ON s.id = l.section_id
-     WHERE g.course_id = $1
+     LEFT JOIN assignments a ON a.lesson_id = l.id
+     LEFT JOIN quizzes qz ON qz.lesson_id = l.id
+     WHERE l.course_id = $1
+       AND l.deleted_at IS NULL
+       AND (a.id IS NOT NULL OR qz.id IS NOT NULL)
      ORDER BY s.sort_order, l.sort_order`,
     [courseId]
   );

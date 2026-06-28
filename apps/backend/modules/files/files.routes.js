@@ -22,11 +22,13 @@ const upload = multer({
   // Don't filter here - let the service validate MIME types properly
 });
 
-// All file routes require authentication
+// Upload/delete require authentication
 router.use(authenticate);
 
-router.post('/upload', authorize('instructor', 'admin'), upload.single('file'), controller.upload);
+// File serving is after auth middleware (also accepts ?token= query param for <video> elements)
 router.get('/:id', controller.serve);
+
+router.post('/upload', authorize('instructor', 'admin'), upload.single('file'), controller.upload);
 router.delete('/:id', authorize('instructor', 'admin'), controller.remove);
 
 module.exports = router;

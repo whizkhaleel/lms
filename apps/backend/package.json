@@ -1,7 +1,7 @@
 {
   "name": "lms-backend",
   "version": "1.0.0",
-  "description": "LMS Platform — Node.js Express API",
+  "description": "Shaheed Mahmoud Academy — Node.js Express API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

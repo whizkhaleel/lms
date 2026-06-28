@@ -14,14 +14,11 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-// ── Public settings (no auth required — only branding info) ──
-router.get('/settings',                   controller.getSettings);
-
-// ── Admin-only routes ──
-router.use(authenticate, authorize('admin', 'super_admin'));
+router.use(apiLimiter, authenticate, authorize('admin', 'super_admin'));
 
 router.get('/analytics',                  controller.analytics);
 router.get('/audit-logs',                 controller.auditLogs);
+router.get('/settings',                   controller.getSettings);
 router.put('/settings',                   controller.updateSettings);
 router.post('/settings/logo',             upload.single('logo'), controller.uploadLogo);
 router.post('/users/bulk-actions',        controller.bulkUserActions);

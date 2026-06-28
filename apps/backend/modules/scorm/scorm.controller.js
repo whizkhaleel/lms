@@ -23,7 +23,7 @@ async function getPackage(req, res, next) {
 
 async function getPackageByLesson(req, res, next) {
   try {
-    const pkg = await service.getPackageByLesson(req.params.lessonId, req.params.courseId);
+    const pkg = await service.getPackageByLesson(req.params.lessonId, req.params.courseId, req.user);
     ApiResponse.success(res, { package: pkg });
   } catch (err) { next(err); }
 }

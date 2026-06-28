@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS institution_settings (
 );
 
 INSERT INTO institution_settings (setting_key, setting_value) VALUES
-  ('institution_name', 'My Learning Academy'),
+  ('institution_name', 'Shaheed Mahmoud Academy'),
   ('institution_tagline', 'Empowering Education'),
   ('institution_email', 'admin@lms.local'),
   ('institution_phone', ''),

@@ -9,6 +9,7 @@ router.use(authenticate);
 
 // ── Conversations ─────────────────────────────
 router.get ('/',                                      controller.getConversations);
+router.get ('/contacts',                              controller.getContacts);
 router.get ('/unread-count',                          controller.getUnreadCount);
 
 // ── Messages inside a conversation ───────────

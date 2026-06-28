@@ -6,6 +6,7 @@ import {
   BookOpen, Plus, Trash2, GripVertical, Video, FileText, HelpCircle,
   ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save, EyeOff, BarChart3,
   Lock, Unlock, X, Megaphone, Database, Package, ExternalLink, Globe,
+  Calendar, Settings, ToggleLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
@@ -45,6 +46,12 @@ export default function CourseBuilderPage() {
     level: 'beginner', language: 'English',
     tags: '', requirements: '', objectives: '',
   });
+  const [settings, setSettings] = useState({
+    startDate: '',
+    endDate: '',
+    enableCompletionTracking: false,
+    showGradesToStudent: true,
+  });
   const [sections, setSections] = useState([]);
   const [expandedSections, setExpandedSections] = useState({});
   const [showSectionModal, setShowSectionModal] = useState(false);
@@ -72,6 +79,12 @@ export default function CourseBuilderPage() {
           tags: (c.tags || []).join(', '),
           requirements: (c.requirements || []).join(', '),
           objectives: (c.objectives || []).join(', '),
+        });
+        setSettings({
+          startDate: c.start_date ? c.start_date.slice(0, 16) : '',
+          endDate: c.end_date ? c.end_date.slice(0, 16) : '',
+          enableCompletionTracking: c.enable_completion_tracking ?? false,
+          showGradesToStudent: c.show_grades_to_student ?? true,
         });
         setSections(c.sections || []);
         const expanded = {};
@@ -160,6 +173,34 @@ export default function CourseBuilderPage() {
     onError: (err) => toast.error(err.response?.data?.message || 'Failed'),
   });
 
+  // Announcements
+  const { data: announcementsData } = useQuery({
+    queryKey: ['course-announcements', id],
+    queryFn: () => announcementsApi.list(id).then(r => r.data.data || []),
+    enabled: isEditing,
+  });
+
+  const [announceForm, setAnnounceForm] = useState({ title: '', body: '' });
+
+  const postAnnounceMut = useMutation({
+    mutationFn: (data) => announcementsApi.create(id, data),
+    onSuccess: () => {
+      toast.success('Announcement posted');
+      setAnnounceForm({ title: '', body: '' });
+      queryClient.invalidateQueries({ queryKey: ['course-announcements', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to post announcement'),
+  });
+
+  const deleteAnnounceMut = useMutation({
+    mutationFn: (announceId) => announcementsApi.delete(id, announceId),
+    onSuccess: () => {
+      toast.success('Announcement deleted');
+      queryClient.invalidateQueries({ queryKey: ['course-announcements', id] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
+  });
+
   const handleSaveDetails = () => {
     const data = {
       title: form.title,
@@ -171,6 +212,10 @@ export default function CourseBuilderPage() {
       tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       requirements: form.requirements ? form.requirements.split(',').map(t => t.trim()).filter(Boolean) : undefined,
       objectives: form.objectives ? form.objectives.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+      startDate: settings.startDate ? new Date(settings.startDate).toISOString() : null,
+      endDate: settings.endDate ? new Date(settings.endDate).toISOString() : null,
+      enableCompletionTracking: settings.enableCompletionTracking,
+      showGradesToStudent: settings.showGradesToStudent,
     };
 
     if (isEditing) {
@@ -228,9 +273,9 @@ export default function CourseBuilderPage() {
 
       {/* Tabs */}
       <div className="flex gap-0 border-b border-gray-800 mb-6">
-        {['details', 'curriculum', 'announcements', 'question-bank', 'groups'].filter(t => {
+        {['details', 'curriculum', 'settings', 'announcements', 'question-bank', 'groups'].filter(t => {
           if (isExactlyInstructor && t === 'details') return false;
-          if (!isEditing && (t === 'announcements' || t === 'question-bank' || t === 'groups')) return false;
+          if (!isEditing && (t === 'announcements' || t === 'question-bank' || t === 'groups' || t === 'settings')) return false;
           return true;
         }).map(t => (
           <button key={t}
@@ -243,7 +288,7 @@ export default function CourseBuilderPage() {
               tab === t ? 'border-[#3B9EE8] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
             )}
           >
-            {t === 'details' ? 'Course Details' : t === 'curriculum' ? 'Curriculum' : t === 'announcements' ? 'Announcements' : t === 'question-bank' ? 'Question Bank' : 'Groups'}
+            {t === 'details' ? 'Course Details' : t === 'curriculum' ? 'Curriculum' : t === 'settings' ? 'Settings' : t === 'announcements' ? 'Announcements' : t === 'question-bank' ? 'Question Bank' : 'Groups'}
           </button>
         ))}
       </div>
@@ -357,6 +402,64 @@ export default function CourseBuilderPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'settings' && (
+        <div className="max-w-xl space-y-6">
+          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-5">
+            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+              <Calendar size={16} className="text-blue-400" />
+              Course Dates
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Start Date</label>
+                <input type="datetime-local" value={settings.startDate}
+                  onChange={e => setSettings(p => ({ ...p, startDate: e.target.value }))}
+                  className="input" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">End Date</label>
+                <input type="datetime-local" value={settings.endDate}
+                  onChange={e => setSettings(p => ({ ...p, endDate: e.target.value }))}
+                  className="input" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-5">
+            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+              <ToggleLeft size={16} className="text-blue-400" />
+              Tracking & Grades
+            </h3>
+
+            <label className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-white">Enable Completion Tracking</p>
+                <p className="text-xs text-gray-500">Track lesson completion progress for students</p>
+              </div>
+              <input type="checkbox" checked={settings.enableCompletionTracking}
+                onChange={e => setSettings(p => ({ ...p, enableCompletionTracking: e.target.checked }))}
+                className="toggle" />
+            </label>
+
+            <label className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-white">Show Grades to Students</p>
+                <p className="text-xs text-gray-500">Students can view their scores in the gradebook</p>
+              </div>
+              <input type="checkbox" checked={settings.showGradesToStudent}
+                onChange={e => setSettings(p => ({ ...p, showGradesToStudent: e.target.checked }))}
+                className="toggle" />
+            </label>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={handleSaveDetails} loading={updateCourse.isPending}>
+              <Save size={16} /> Save Settings
+            </Button>
+          </div>
         </div>
       )}
 
@@ -837,34 +940,6 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
       toast.success('Rubric saved');
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to save rubric'),
-  });
-
-  // Announcements
-  const { data: announcementsData } = useQuery({
-    queryKey: ['course-announcements', courseId],
-    queryFn: () => announcementsApi.list(courseId).then(r => r.data.data || []),
-    enabled: isEditing,
-  });
-
-  const [announceForm, setAnnounceForm] = useState({ title: '', body: '' });
-
-  const postAnnounceMut = useMutation({
-    mutationFn: (data) => announcementsApi.create(courseId, data),
-    onSuccess: () => {
-      toast.success('Announcement posted');
-      setAnnounceForm({ title: '', body: '' });
-      queryClient.invalidateQueries({ queryKey: ['course-announcements', courseId] });
-    },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to post announcement'),
-  });
-
-  const deleteAnnounceMut = useMutation({
-    mutationFn: (id) => announcementsApi.delete(courseId, id),
-    onSuccess: () => {
-      toast.success('Announcement deleted');
-      queryClient.invalidateQueries({ queryKey: ['course-announcements', courseId] });
-    },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
   const handleSubmit = (e) => {

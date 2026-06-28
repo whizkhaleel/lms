@@ -91,7 +91,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-const adminRoutes = require('./modules/admin/admin.routes');
+const instructorRoutes = require('./modules/instructor/instructor.routes');
+const adminRoutes      = require('./modules/admin/admin.routes');
 const { apiLimiter } = require('./shared/middleware/rateLimiter');
 
 // ── API Routes ────────────────────────────────
@@ -115,6 +116,7 @@ app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← Ex
 app.use('/api/v1/calendar',                      calendarRoutes);
 app.use('/api/v1/scorm',                        scormRoutes);
 app.use('/api/v1/lti',                          ltiRoutes);
+app.use('/api/v1/instructor',                   instructorRoutes);
 app.use('/api/v1/admin',                        adminRoutes);           // ← Phase 9
 
 // ── 404 ───────────────────────────────────────
@@ -343,7 +345,7 @@ eventBus.on('user.registered',    async () => { await require('./shared/utils/ca
     server.listen(PORT, () => {
       console.log(`
 ╔══════════════════════════════════════╗
-║       LMS Backend — Running          ║
+║   Shaheed Mahmoud Academy — Running  ║
 ║  Port    : ${PORT}                       ║
 ║  Env     : ${env.NODE_ENV}            ║
 ║  DB      : ${env.POSTGRES_DB}          ║

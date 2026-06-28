@@ -24,6 +24,7 @@ const ALLOWED_TYPES = {
     'text/plain',
     'application/zip',
   ],
+  institution_logo:     ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'],
 };
 
 // Max sizes per context (bytes)
@@ -33,6 +34,7 @@ const MAX_SIZES = {
   lesson_video:          500 * 1024 * 1024,  // 500 MB
   lesson_resource:       50 * 1024 * 1024,   // 50 MB
   assignment_submission: 100 * 1024 * 1024,  // 100 MB
+  institution_logo:      2 * 1024 * 1024,    // 2 MB
 };
 
 // Context -> storage sub-directory mapping
@@ -42,6 +44,7 @@ const CONTEXT_DIRS = {
   lesson_video:          'uploads/lessons',
   lesson_resource:       'uploads/lessons',
   assignment_submission: 'uploads/assignments',
+  institution_logo:      'uploads/branding',
 };
 
 /**
@@ -88,7 +91,7 @@ async function verifyFileContextOwner(context, ownerId, requestingUser) {
  */
 async function verifyFileAccess(fileId, requestingUser) {
   const { rows } = await db.query(
-    'SELECT context, owner_id, is_public, uploaded_by, deleted_at FROM files WHERE id = $1',
+    'SELECT context, is_public, uploaded_by, deleted_at FROM files WHERE id = $1',
     [fileId]
   );
   const file = rows[0];
@@ -96,30 +99,60 @@ async function verifyFileAccess(fileId, requestingUser) {
 
   if (file.is_public) return;
 
+  if (!requestingUser) {
+    throw ApiError.forbidden('Authentication required to access this file');
+  }
+
   if (requestingUser.role === 'admin' || requestingUser.role === 'super_admin') return;
 
   if (file.uploaded_by === requestingUser.id) return;
 
-  if (file.context === 'lesson_video' || file.context === 'lesson_resource') {
-    const { rows: enrRows } = await db.query(
-      `SELECT e.id FROM enrollments e
-       JOIN lessons l ON l.course_id = e.course_id
-       WHERE l.id = $1 AND e.user_id = $2 AND e.status = 'active'`,
-      [file.owner_id, requestingUser.id]
+  if (file.context === 'lesson_video') {
+    const { rows: lessonRows } = await db.query(
+      `SELECT l.course_id FROM lessons l WHERE l.video_file_id = $1 AND l.deleted_at IS NULL`,
+      [fileId]
     );
-    if (enrRows.length > 0) return;
+    if (lessonRows.length > 0) {
+      const courseId = lessonRows[0].course_id;
+      const { rows: enrRows } = await db.query(
+        `SELECT id FROM enrollments
+         WHERE course_id = $1 AND user_id = $2 AND status = 'active'`,
+        [courseId, requestingUser.id]
+      );
+      if (enrRows.length > 0) return;
 
-    const { rows: courseRows } = await db.query(
-      `SELECT c.instructor_id
-       FROM lessons l
-       JOIN courses c ON c.id = l.course_id
-       WHERE l.id = $1`,
-      [file.owner_id]
-    );
-    if (courseRows.length > 0 && courseRows[0].instructor_id === requestingUser.id) return;
+      const { rows: courseRows } = await db.query(
+        `SELECT instructor_id FROM courses WHERE id = $1`,
+        [courseId]
+      );
+      if (courseRows.length > 0 && courseRows[0].instructor_id === requestingUser.id) return;
+    }
   }
 
-  if (file.context === 'avatar' && file.owner_id === requestingUser.id) return;
+  if (file.context === 'lesson_resource') {
+    const { rows: lessonRows } = await db.query(
+      `SELECT l.course_id
+       FROM lesson_resources lr
+       JOIN lessons l ON l.id = lr.lesson_id
+       WHERE lr.file_id = $1 AND l.deleted_at IS NULL`,
+      [fileId]
+    );
+    if (lessonRows.length > 0) {
+      const courseId = lessonRows[0].course_id;
+      const { rows: enrRows } = await db.query(
+        `SELECT id FROM enrollments
+         WHERE course_id = $1 AND user_id = $2 AND status = 'active'`,
+        [courseId, requestingUser.id]
+      );
+      if (enrRows.length > 0) return;
+
+      const { rows: courseRows } = await db.query(
+        `SELECT instructor_id FROM courses WHERE id = $1`,
+        [courseId]
+      );
+      if (courseRows.length > 0 && courseRows[0].instructor_id === requestingUser.id) return;
+    }
+  }
 
   throw ApiError.forbidden('You do not have access to this file');
 }
@@ -224,7 +257,7 @@ async function saveFile({ uploadedFile, context, ownerId, uploadedBy, isPublic =
  */
 async function getFilePath(fileId) {
   const { rows } = await db.query(
-    'SELECT storage_path, is_public, mime_type, deleted_at FROM files WHERE id = $1',
+    'SELECT storage_path, is_public, mime_type, size_bytes, deleted_at FROM files WHERE id = $1',
     [fileId]
   );
   const file = rows[0];
@@ -233,7 +266,7 @@ async function getFilePath(fileId) {
   const absPath = storage.localPath(file.storage_path);
   if (!fs.existsSync(absPath)) throw ApiError.notFound('File not found on disk');
 
-  return { absPath, isPublic: file.is_public, mimeType: file.mime_type };
+  return { absPath, isPublic: file.is_public, mimeType: file.mime_type, sizeBytes: file.size_bytes };
 }
 
 /**

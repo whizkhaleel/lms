@@ -13,12 +13,18 @@ const redis    = require('../../config/redis');
  */
 module.exports = async function authenticate(req, res, next) {
   try {
+    let token;
+
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw ApiError.unauthorized('No token provided');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      throw ApiError.unauthorized('No token provided');
+    }
 
     // Check blacklist (token invalidated on logout)
     const isBlacklisted = await redis.get(`bl_${token}`);

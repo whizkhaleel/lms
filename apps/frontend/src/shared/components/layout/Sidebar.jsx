@@ -77,6 +77,7 @@ export default function Sidebar({ open, onClose }) {
               <SectionLabel label="Teaching" />
               <NavItem to="/instructor"              icon={GraduationCap} label="Instructor Panel" end />
               <NavItem to="/instructor/courses"      icon={BookOpen}      label="My Courses" />
+              <NavItem to="/instructor/students"   icon={Users}         label="My Students" />
               <NavItem to="/instructor/gradebook"  icon={Award}        label="Gradebook" />
               <NavItem to="/instructor/submissions"  icon={FileText}      label="Submissions" />
               <NavItem to="/instructor/analytics"    icon={BarChart3}     label="Analytics" />

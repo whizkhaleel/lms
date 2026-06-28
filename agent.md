@@ -1,4 +1,4 @@
-# LMS Platform — AI Code Agent Operating Manual
+# Shaheed Mahmoud Academy — AI Code Agent Operating Manual
 
 > **Read this entire document before writing a single line of code.**
 > This is your source of truth for every decision you make on this project.

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, MessageSquare, Trash2 } from 'lucide-react';
+import { Send, MessageSquare, Trash2, Plus, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api             from '../../../shared/api/client';
 import { useAuthStore }from '../../../shared/stores/authStore';
 import { useSocketStore} from '../../../shared/stores/socketStore';
 import Spinner         from '../../../shared/components/ui/spinner';
+import Modal           from '../../../shared/components/ui/modal';
 import toast           from 'react-hot-toast';
 import { clsx }        from 'clsx';
 
@@ -18,6 +19,10 @@ export default function MessagesPage() {
   const [isTyping, setTyping] = useState(false);
   const bottomRef             = useRef(null);
   const typingTimer           = useRef(null);
+  const [showCompose, setShowCompose] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [composeContact, setComposeContact] = useState(null);
+  const [composeText, setComposeText] = useState('');
 
   // Conversations list
   const { data: convs = [], isLoading: convsLoading } = useQuery({
@@ -25,6 +30,18 @@ export default function MessagesPage() {
     queryFn:  () => api.get('/messages').then(r => r.data.data.conversations),
     refetchInterval: 15000,
   });
+
+  // Available contacts (people the user can message)
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['message-contacts'],
+    queryFn:  () => api.get('/messages/contacts').then(r => r.data.data.contacts),
+    enabled:  showCompose,
+  });
+
+  const filteredContacts = contacts.filter(c =>
+    c.id !== user?.id && (c.first_name + ' ' + c.last_name)
+      .toLowerCase().includes(contactSearch.toLowerCase())
+  );
 
   // Messages in active conversation
   const { data: msgData } = useQuery({
@@ -54,13 +71,13 @@ export default function MessagesPage() {
 
   // Send message
   const sendMutation = useMutation({
-    mutationFn: (content) => api.post('/messages/send', {
-      recipientId: activeConv.other_user_id,
+    mutationFn: ({ recipientId, content }) => api.post('/messages/send', {
+      recipientId,
       content,
     }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       setText('');
-      queryClient.invalidateQueries({ queryKey: ['messages', activeConv.conversation_id] });
+      queryClient.invalidateQueries({ queryKey: ['messages', activeConv?.conversation_id] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
     },
   });
@@ -68,15 +85,15 @@ export default function MessagesPage() {
   const deleteMut = useMutation({
     mutationFn: ({ convId, msgId }) => api.delete(`/messages/${convId}/messages/${msgId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', activeConv.conversation_id] });
+      queryClient.invalidateQueries({ queryKey: ['messages', activeConv?.conversation_id] });
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to delete'),
   });
 
   const handleSend = () => {
     const content = text.trim();
-    if (!content || sendMutation.isPending) return;
-    sendMutation.mutate(content);
+    if (!content || sendMutation.isPending || !activeConv) return;
+    sendMutation.mutate({ recipientId: activeConv.other_user_id, content });
   };
 
   const handleTyping = (val) => {
@@ -94,12 +111,17 @@ export default function MessagesPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-130px)] card p-0 overflow-hidden">
+    <><div className="flex h-[calc(100vh-130px)] card p-0 overflow-hidden">
 
       {/* Conversations sidebar */}
       <div className="w-72 flex-shrink-0 border-r border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <h2 className="font-semibold text-white">Messages</h2>
+          <button onClick={() => setShowCompose(true)}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            title="New message">
+            <Plus size={18} />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -229,5 +251,91 @@ export default function MessagesPage() {
         </div>
       )}
     </div>
+
+      {/* New Message modal */}
+      <Modal open={showCompose} onClose={() => {
+        setShowCompose(false); setContactSearch(''); setComposeContact(null); setComposeText('');
+      }} title={composeContact ? `Message ${composeContact.first_name}` : 'New Message'} size="sm">
+        {composeContact ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-gray-700">
+              <button onClick={() => { setComposeContact(null); setComposeText(''); }}
+                className="text-gray-400 hover:text-white text-sm">Back</button>
+              <div className="w-8 h-8 rounded-full bg-[#1A6FBF] flex items-center
+                              justify-center text-white text-xs font-bold flex-shrink-0">
+                {composeContact.first_name?.charAt(0)}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">{composeContact.first_name} {composeContact.last_name}</p>
+                <p className="text-xs text-gray-500 capitalize">{composeContact.role}</p>
+              </div>
+            </div>
+            <textarea
+              value={composeText}
+              onChange={e => setComposeText(e.target.value)}
+              placeholder="Type your message…"
+              rows={4}
+              className="input w-full resize-none"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setShowCompose(false); setComposeContact(null); setComposeText(''); }}
+                className="btn-ghost px-4 py-2 rounded-xl text-sm">Cancel</button>
+              <button
+                onClick={() => {
+                  if (!composeText.trim()) return;
+                  setShowCompose(false);
+                  setComposeContact(null);
+                  sendMutation.mutate(
+                    { recipientId: composeContact.id, content: composeText.trim() },
+                  );
+                  setComposeText('');
+                }}
+                disabled={!composeText.trim() || sendMutation.isPending}
+                className="btn-primary px-4 py-2 rounded-xl flex items-center gap-2 text-sm disabled:opacity-50"
+              >
+                <Send size={14} />
+                {sendMutation.isPending ? 'Sending…' : 'Send'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                value={contactSearch}
+                onChange={e => setContactSearch(e.target.value)}
+                placeholder="Search contacts…"
+                className="input w-full pl-9 py-2 text-sm"
+                autoFocus
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {filteredContacts.length === 0 ? (
+                <p className="text-center py-8 text-gray-500 text-sm">No contacts found</p>
+              ) : (
+                filteredContacts.map(contact => (
+                  <button
+                    key={contact.id}
+                    onClick={() => setComposeContact(contact)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#1A6FBF] flex items-center
+                                    justify-center text-white text-xs font-bold flex-shrink-0">
+                      {contact.first_name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{contact.first_name} {contact.last_name}</p>
+                      <p className="text-xs text-gray-500 capitalize">{contact.role}</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
   );
 }

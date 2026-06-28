@@ -1,32 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery }  from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, FileText, MessageSquare, Megaphone, CalendarDays } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, FileText, MessageSquare, Megaphone, CalendarDays, CheckCircle, Play } from 'lucide-react';
 import { clsx } from 'clsx';
+import toast from 'react-hot-toast';
 import api            from '../../../shared/api/client';
 import { announcementsApi } from '../../../shared/api/announcements.api';
+import { useAuthStore } from '../../../shared/stores/authStore';
 import VideoPlayer    from '../VideoPlayer';
 import CourseProgress from '../CourseProgress';
 import QuizPlayer     from '../../assessments/QuizPlayer';
 import AssignmentSubmission from '../AssignmentSubmission';
 import SCORMPlayer from '../SCORMPlayer';
 import LTILaunch from '../LTILaunch';
-import Spinner        from '../../../shared/components/ui/spinner';
+import Spinner from '../../../shared/components/ui/spinner';
 
 export default function ClassroomPage() {
   const { courseId, lessonId } = useParams();
   const navigate               = useNavigate();
+  const queryClient = useQueryClient();
   const [view, setView] = useState('lesson'); // 'lesson' | 'announcements'
+  const accessToken = useAuthStore(s => s.accessToken);
 
   // Load full course progress (sections + lessons list)
-  const { data: progress, refetch: refetchProgress } = useQuery({
+  const { data: progress, error: progressError, refetch: refetchProgress } = useQuery({
     queryKey: ['course-progress', courseId],
     queryFn:  () => api.get(`/progress/courses/${courseId}`).then(r => r.data.data.progress),
+    retry: false,
   });
 
-  // Determine active lesson — URL param or first incomplete
+  // Show start screen only on first visit (no progress, no specific lesson)
   const allLessons = progress?.lessons || [];
-  const activeLessonId = lessonId || progress?.nextLessonId || allLessons[0]?.id;
+  const showStartScreen = progress && progress.completed_lessons === 0 && !lessonId;
+  const activeLessonId = showStartScreen ? null : (lessonId || progress?.nextLessonId || allLessons[0]?.id);
   const activeLesson   = allLessons.find(l => l.id === activeLessonId);
 
   // Load lesson content
@@ -56,10 +62,38 @@ export default function ClassroomPage() {
 
   const goToLesson = (id) => navigate(`/learn/${courseId}/lessons/${id}`);
 
+  const handleStart = () => {
+    if (allLessons[0]) goToLesson(allLessons[0].id);
+  };
+
   const handleLessonComplete = () => {
     refetchProgress();
     if (nextLesson) setTimeout(() => goToLesson(nextLesson.id), 1500);
   };
+
+  const [isCompleting, setIsCompleting] = useState(false);
+  const completeMut = useMutation({
+    mutationFn: (data) => api.post(`/progress/lessons/${data.lessonId}/complete`, { courseId }),
+    onSuccess: () => {
+      toast.success('Lesson completed');
+      refetchProgress();
+      queryClient.invalidateQueries({ queryKey: ['course-progress', courseId] });
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to mark complete'),
+  });
+
+  // Blocked state for date restrictions
+  if (progressError?.response?.status === 403) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-64px)]">
+        <div className="text-center max-w-md p-8">
+          <CalendarDays size={48} className="mx-auto mb-4 text-gray-600" />
+          <h2 className="text-xl font-bold text-white mb-2">Course Unavailable</h2>
+          <p className="text-gray-400">{progressError?.response?.data?.message || 'This course is not available at this time.'}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
@@ -120,6 +154,8 @@ export default function ClassroomPage() {
               </button>
               <span className="text-sm text-white font-medium">Announcements</span>
             </div>
+          ) : showStartScreen ? (
+            <span className="text-sm text-white font-medium">Getting Started</span>
           ) : (
             <div className="flex items-center gap-3">
               <button onClick={() => prevLesson && goToLesson(prevLesson.id)}
@@ -149,7 +185,38 @@ export default function ClassroomPage() {
           </div>
         </div>
 
-        {/* Lesson content */}
+        {/* Start screen — first visit, no specific lesson targeted */}
+        {showStartScreen && (
+          <div className="flex-1 overflow-y-auto p-5 flex items-center justify-center">
+            <div className="text-center max-w-lg">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400
+                              flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-500/20">
+                <Play size={28} className="text-white ml-0.5" fill="white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {progress?.course_title || 'Course'}
+              </h1>
+              <p className="text-gray-400 mb-8 leading-relaxed">
+                You're enrolled and ready to go. Work through the lessons at your own pace, 
+                and track your progress as you learn.
+              </p>
+              <div className="flex items-center justify-center gap-6 mb-8 text-sm text-gray-500">
+                <span>{progress?.total_lessons || 0} lessons</span>
+                <span className="w-px h-4 bg-gray-700" />
+                <span>{Math.round((progress?.duration_seconds || 0) / 60)} minutes</span>
+              </div>
+              <button onClick={handleStart}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl
+                          bg-blue-600 hover:bg-blue-700 text-white font-medium
+                          transition-colors shadow-lg shadow-blue-600/20">
+                <Play size={18} fill="white" />
+                Start Learning
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!showStartScreen && (
         <div className="flex-1 overflow-y-auto p-5">
           {view === 'announcements' ? (
             <div className="max-w-3xl mx-auto space-y-4">
@@ -187,7 +254,7 @@ export default function ClassroomPage() {
                 <VideoPlayer
                   lessonId={lessonData.id}
                   courseId={courseId}
-                  videoUrl={`/api/v1/files/${lessonData.video_file_id}`}
+                  videoUrl={`/api/v1/files/${lessonData.video_file_id}?token=${encodeURIComponent(accessToken || '')}`}
                   durationSecs={lessonData.duration_seconds}
                   onComplete={handleLessonComplete}
                   onNext={nextLesson ? () => goToLesson(nextLesson.id) : undefined}
@@ -196,12 +263,25 @@ export default function ClassroomPage() {
 
               {/* TEXT lesson */}
               {lessonData.type === 'text' && (
-                <div className="card prose prose-invert max-w-none">
-                  <div
-                    className="text-gray-300 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: lessonData.content || '' }}
+                <>
+                  <div className="card prose prose-invert max-w-none">
+                    <div
+                      className="text-gray-300 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: lessonData.content || '' }}
+                    />
+                  </div>
+                  <LessonCompletionBar
+                    lessonId={lessonData.id}
+                    courseId={courseId}
+                    isCompleted={activeLesson?.is_completed}
+                    onComplete={() => completeMut.mutate({ lessonId: lessonData.id })}
+                    loading={completeMut.isPending}
+                    nextLesson={nextLesson}
+                    onNext={() => goToLesson(nextLesson.id)}
+                    prevLesson={prevLesson}
+                    onPrev={() => goToLesson(prevLesson.id)}
                   />
-                </div>
+                </>
               )}
 
               {/* QUIZ lesson */}
@@ -231,11 +311,47 @@ export default function ClassroomPage() {
 
               {/* LTI lesson */}
               {lessonData.type === 'lti' && (
-                <LTILaunch
-                  lessonId={lessonData.id}
-                  courseId={courseId}
-                  onComplete={handleLessonComplete}
-                />
+                <>
+                  <LTILaunch
+                    lessonId={lessonData.id}
+                    courseId={courseId}
+                    onComplete={handleLessonComplete}
+                  />
+                  <LessonCompletionBar
+                    lessonId={lessonData.id}
+                    courseId={courseId}
+                    isCompleted={activeLesson?.is_completed}
+                    onComplete={() => completeMut.mutate({ lessonId: lessonData.id })}
+                    loading={completeMut.isPending}
+                    nextLesson={nextLesson}
+                    onNext={() => goToLesson(nextLesson.id)}
+                    prevLesson={prevLesson}
+                    onPrev={() => goToLesson(prevLesson.id)}
+                  />
+                </>
+              )}
+
+              {/* PDF / fallback for unknown types */}
+              {!['video', 'text', 'quiz', 'assignment', 'scorm', 'lti'].includes(lessonData.type) && (
+                <>
+                  {lessonData.content && (
+                    <div className="card prose prose-invert max-w-none">
+                      <div className="text-gray-300 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: lessonData.content || '' }} />
+                    </div>
+                  )}
+                  <LessonCompletionBar
+                    lessonId={lessonData.id}
+                    courseId={courseId}
+                    isCompleted={activeLesson?.is_completed}
+                    onComplete={() => completeMut.mutate({ lessonId: lessonData.id })}
+                    loading={completeMut.isPending}
+                    nextLesson={nextLesson}
+                    onNext={() => goToLesson(nextLesson.id)}
+                    prevLesson={prevLesson}
+                    onPrev={() => goToLesson(prevLesson.id)}
+                  />
+                </>
               )}
 
               {/* Lesson title + resources */}
@@ -282,6 +398,46 @@ export default function ClassroomPage() {
             </div>
           )}
         </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
+// ── Lesson completion bar ──────────────────────
+function LessonCompletionBar({ lessonId, courseId, isCompleted, onComplete, loading, nextLesson, onNext, prevLesson, onPrev }) {
+  const [marked, setMarked] = useState(false);
+  const completed = isCompleted || marked;
+
+  return (
+    <div className="card flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center gap-3">
+        {prevLesson && (
+          <button onClick={onPrev}
+            className="btn-ghost flex items-center gap-1.5 text-sm text-gray-400 hover:text-white px-3 py-2 rounded-lg transition-colors">
+            <ChevronLeft size={16} /> Previous
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => { if (!completed) { onComplete(); setMarked(true); } }}
+          disabled={completed || loading}
+          className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
+            completed
+              ? 'bg-green-600 text-white cursor-default'
+              : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+          }`}
+        >
+          <CheckCircle size={16} />
+          {completed ? 'Completed' : 'Mark Complete'}
+        </button>
+        {nextLesson && (
+          <button onClick={onNext}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+            Next Lesson <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     </div>
   );

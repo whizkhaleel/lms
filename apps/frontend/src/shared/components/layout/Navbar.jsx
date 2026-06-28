@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, MessageSquare, Menu, X, ChevronDown, BookOpen } from 'lucide-react';
+import { useQuery }  from '@tanstack/react-query';
 import { useAuth }          from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationDrawer   from '../../../features/notifications/NotificationDrawer';
+import api                  from '../../api/client';
 
 export default function Navbar({ onMenuToggle }) {
   const { user, logout, isAdmin, isInstructor } = useAuth();
@@ -12,6 +14,17 @@ export default function Navbar({ onMenuToggle }) {
 
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Fetch institution settings for branding
+  const { data: settings } = useQuery({
+    queryKey: ['institution-settings'],
+    queryFn: () => api.get('/admin/settings').then(r => r.data.data.settings || {}),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const institutionName = settings?.institution_name || 'Shaheed Mahmoud Academy';
+  const logoUrl = settings?.institution_logo_url || '/logo.jpg';
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <>
@@ -30,11 +43,16 @@ export default function Navbar({ onMenuToggle }) {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 mr-4">
-          <div className="w-8 h-8 bg-[#1A6FBF] rounded-lg flex items-center justify-center">
-            <BookOpen size={16} className="text-white" />
+          <div className="w-8 h-8 bg-[#1A6FBF] rounded-lg flex items-center justify-center overflow-hidden">
+            {logoError ? (
+              <BookOpen size={16} className="text-white" />
+            ) : (
+              <img src={logoUrl} alt={institutionName} className="w-full h-full object-cover"
+                onError={() => setLogoError(true)} />
+            )}
           </div>
-          <span className="font-display font-bold text-white hidden sm:block">
-            LMS
+          <span className="font-display font-bold text-white hidden sm:block text-sm truncate max-w-[200px]">
+            {institutionName}
           </span>
         </Link>
 
@@ -110,7 +128,9 @@ export default function Navbar({ onMenuToggle }) {
                       <p className="text-sm font-semibold text-white">
                         {user.first_name} {user.last_name}
                       </p>
-                      <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                      <p className="text-xs text-gray-500 capitalize">
+                        {user.role === 'super_admin' ? 'Super Admin' : user.role}
+                      </p>
                     </div>
 
                     {[
