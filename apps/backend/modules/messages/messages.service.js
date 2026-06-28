@@ -249,39 +249,65 @@ async function deleteMessage(messageId, userId) {
 }
 
 // ── Get contacts the user can message ─────────
-async function getContacts(userId, userRole) {
+async function getContacts(userId, userRole, search) {
+  let sql, params;
+  const searchClause = search
+    ? `AND (u.first_name ILIKE $+ OR u.last_name ILIKE $+ OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $+)`
+      .replace(/\$\+/g, '$' + (search ? 2 : 1))
+    : '';
+
   if (userRole === 'admin') {
-    const { rows } = await db.query(
-      `SELECT id, first_name, last_name, role
-       FROM users WHERE deleted_at IS NULL
-       ORDER BY first_name, last_name`
-    );
+    sql = `SELECT id, first_name, last_name, role
+           FROM users WHERE deleted_at IS NULL`;
+    params = [];
+    if (search) { sql += ` AND (first_name ILIKE $1 OR last_name ILIKE $1 OR CONCAT(first_name, ' ', last_name) ILIKE $1)`; params.push(`%${search}%`); }
+    sql += ` ORDER BY first_name, last_name`;
+    const { rows } = await db.query(sql, params);
     return rows;
   }
 
   if (userRole === 'instructor') {
-    const { rows } = await db.query(
-      `SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
-       FROM users u
-       JOIN enrollments e ON e.user_id = u.id AND e.status = 'active'
-       JOIN courses c ON c.id = e.course_id AND c.instructor_id = $1 AND c.deleted_at IS NULL
-       WHERE u.deleted_at IS NULL AND u.role = 'student'
-       ORDER BY u.first_name, u.last_name`,
-      [userId]
-    );
+    sql = `
+      SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
+      FROM users u
+      LEFT JOIN enrollments e ON e.user_id = u.id AND e.status = 'active'
+      LEFT JOIN courses c ON c.id = e.course_id AND c.instructor_id = $1 AND c.deleted_at IS NULL
+      WHERE u.deleted_at IS NULL
+        AND u.id != $1
+        AND (
+          u.role = 'admin'
+          OR (u.role = 'student' AND c.id IS NOT NULL)
+          OR (u.role = 'instructor')
+        )`;
+    params = [userId];
+    if (search) {
+      sql += ` AND (u.first_name ILIKE $2 OR u.last_name ILIKE $2 OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $2)`;
+      params.push(`%${search}%`);
+    }
+    sql += ` ORDER BY u.first_name, u.last_name`;
+    const { rows } = await db.query(sql, params);
     return rows;
   }
 
-  // Student — instructors of enrolled courses
-  const { rows } = await db.query(
-    `SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
-     FROM users u
-     JOIN courses c ON c.instructor_id = u.id AND c.deleted_at IS NULL
-     JOIN enrollments e ON e.course_id = c.id AND e.user_id = $1 AND e.status = 'active'
-     WHERE u.deleted_at IS NULL
-     ORDER BY u.first_name, u.last_name`,
-    [userId]
-  );
+  // Student — instructors of enrolled courses + admin
+  sql = `
+    SELECT DISTINCT u.id, u.first_name, u.last_name, u.role
+    FROM users u
+    LEFT JOIN courses c ON c.instructor_id = u.id AND c.deleted_at IS NULL
+    LEFT JOIN enrollments e ON e.course_id = c.id AND e.user_id = $1 AND e.status = 'active'
+    WHERE u.deleted_at IS NULL
+      AND u.id != $1
+      AND (
+        u.role = 'admin'
+        OR (u.role = 'instructor' AND c.id IS NOT NULL)
+      )`;
+  params = [userId];
+  if (search) {
+    sql += ` AND (u.first_name ILIKE $2 OR u.last_name ILIKE $2 OR CONCAT(u.first_name, ' ', u.last_name) ILIKE $2)`;
+    params.push(`%${search}%`);
+  }
+  sql += ` ORDER BY u.first_name, u.last_name`;
+  const { rows } = await db.query(sql, params);
   return rows;
 }
 

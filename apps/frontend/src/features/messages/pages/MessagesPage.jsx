@@ -33,15 +33,10 @@ export default function MessagesPage() {
 
   // Available contacts (people the user can message)
   const { data: contacts = [] } = useQuery({
-    queryKey: ['message-contacts'],
-    queryFn:  () => api.get('/messages/contacts').then(r => r.data.data.contacts),
+    queryKey: ['message-contacts', contactSearch],
+    queryFn:  () => api.get(`/messages/contacts?search=${encodeURIComponent(contactSearch)}`).then(r => r.data.data.contacts),
     enabled:  showCompose,
   });
-
-  const filteredContacts = contacts.filter(c =>
-    c.id !== user?.id && (c.first_name + ' ' + c.last_name)
-      .toLowerCase().includes(contactSearch.toLowerCase())
-  );
 
   // Messages in active conversation
   const { data: msgData } = useQuery({
@@ -312,10 +307,10 @@ export default function MessagesPage() {
               />
             </div>
             <div className="max-h-64 overflow-y-auto space-y-1">
-              {filteredContacts.length === 0 ? (
+              {contacts.length === 0 ? (
                 <p className="text-center py-8 text-gray-500 text-sm">No contacts found</p>
               ) : (
-                filteredContacts.map(contact => (
+                contacts.map(contact => (
                   <button
                     key={contact.id}
                     onClick={() => setComposeContact(contact)}

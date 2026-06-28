@@ -57,7 +57,8 @@ async function getUnreadCount(req, res, next) {
 
 async function getContacts(req, res, next) {
   try {
-    const contacts = await service.getContacts(req.user.id, req.user.role);
+    const search = req.query.search || '';
+    const contacts = await service.getContacts(req.user.id, req.user.role, search);
     ApiResponse.success(res, { contacts });
   } catch (err) { next(err); }
 }
