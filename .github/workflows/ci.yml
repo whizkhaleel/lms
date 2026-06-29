@@ -73,11 +73,28 @@ jobs:
         run: npm run test:unit
         timeout-minutes: 5
 
+      - name: Initialize database
+        run: |
+          for f in ../../database/init/*.sql; do
+            psql -h localhost -U lms_user -d lms_test -f "$f"
+          done
+        timeout-minutes: 2
+        env:
+          PGPASSWORD: change_me
+
+      - name: Start server & wait for health
+        run: |
+          node server.js &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:5000/api/health > /dev/null && break
+            sleep 1
+          done
+          curl -f http://localhost:5000/api/health
+        timeout-minutes: 2
+
       - name: Run integration tests
         run: npm run test:integration
         timeout-minutes: 10
-        env:
-          PGPASSWORD: change_me
 
   frontend:
     runs-on: ubuntu-latest
