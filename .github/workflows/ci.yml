@@ -99,6 +99,12 @@ jobs:
         run: npm run test:integration
         timeout-minutes: 10
 
+      - name: Run comprehensive E2E tests
+        run: node tests/e2e/comprehensive.test.js
+        timeout-minutes: 15
+        env:
+          BASE_URL: http://localhost:5000
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
