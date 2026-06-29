@@ -84,6 +84,7 @@ jobs:
 
       - name: Start server & wait for health
         run: |
+          mkdir -p "$LMSDATA_PATH/temp"
           node server.js &
           for i in $(seq 1 30); do
             curl -sf http://localhost:5000/api/health > /dev/null && break
@@ -91,6 +92,8 @@ jobs:
           done
           curl -f http://localhost:5000/api/health
         timeout-minutes: 2
+        env:
+          LMSDATA_PATH: /home/runner/work/lms/lmsdata
 
       - name: Run integration tests
         run: npm run test:integration
