@@ -85,4 +85,42 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { upload, serve, remove };
+// Serve public file — no auth needed, only is_public = true files
+async function servePublic(req, res, next) {
+  try {
+    const { absPath, isPublic, mimeType, sizeBytes } = await service.getFilePath(req.params.id);
+    if (!isPublic) throw ApiError.forbidden('File is not public');
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    const inline = mimeType.startsWith('image/') || mimeType === 'application/pdf';
+    res.setHeader('Content-Disposition', inline ? 'inline' : 'attachment');
+
+    const range = req.headers.range;
+    if (range && sizeBytes > 0) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : sizeBytes - 1;
+      const chunkSize = end - start + 1;
+
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${sizeBytes}`);
+      res.setHeader('Content-Length', chunkSize);
+
+      const stream = fs.createReadStream(absPath, { start, end });
+      stream.on('error', () => next(ApiError.notFound('File not found')));
+      stream.pipe(res);
+    } else {
+      if (sizeBytes) res.setHeader('Content-Length', sizeBytes);
+      const stream = fs.createReadStream(absPath);
+      stream.on('error', () => next(ApiError.notFound('File not found')));
+      stream.pipe(res);
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { upload, serve, remove, servePublic };

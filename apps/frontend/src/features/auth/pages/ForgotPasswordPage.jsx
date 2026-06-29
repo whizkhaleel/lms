@@ -3,7 +3,7 @@ import { Link }        from 'react-router-dom';
 import { useState }    from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi }     from '../../../shared/api/auth.api';
-import Input           from '../../../shared/components/ui/input';
+import Input, { PasswordInput } from '../../../shared/components/ui/input';
 import Button          from '../../../shared/components/ui/Button';
 import toast           from 'react-hot-toast';
 
@@ -101,9 +101,8 @@ export function ResetPasswordPage() {
       </div>
       <div className="card">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input
+          <PasswordInput
             label="New password"
-            type="password"
             error={errors.password?.message}
             {...register('password', {
               required: 'Password is required',
@@ -111,9 +110,8 @@ export function ResetPasswordPage() {
               pattern: { value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, message: 'Needs uppercase, lowercase, number' },
             })}
           />
-          <Input
+          <PasswordInput
             label="Confirm password"
-            type="password"
             error={errors.confirmPassword?.message}
             {...register('confirmPassword', {
               validate: (v) => v === pwd || 'Passwords do not match',

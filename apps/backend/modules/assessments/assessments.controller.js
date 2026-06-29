@@ -20,7 +20,7 @@ const quizSchema = Joi.object({
 
 const questionSchema = Joi.object({
   type:         Joi.string().valid('multiple_choice','multi_select','true_false','short_answer').required(),
-  questionText: Joi.string().trim().min(3).required(),
+  questionText: Joi.string().trim().min(1).required(),
   options:      Joi.array().items(Joi.object({
     id:         Joi.string().required(),
     text:       Joi.string().required(),

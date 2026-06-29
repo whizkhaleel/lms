@@ -4,7 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 import toast          from 'react-hot-toast';
 import api             from '../../../shared/api/client';
 import { useAuthStore } from '../../../shared/stores/authStore';
-import Input           from '../../../shared/components/ui/input';
+import Input, { PasswordInput } from '../../../shared/components/ui/input';
 import Button          from '../../../shared/components/ui/Button';
 import { useState }    from 'react';
 
@@ -55,16 +55,14 @@ export default function ChangePasswordPage() {
 
       <div className="card">
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input
+          <PasswordInput
             label={forced ? 'Temporary password' : 'Current password'}
-            type="password"
             placeholder="••••••••"
             error={errors.currentPassword?.message}
             {...register('currentPassword', { required: 'Required' })}
           />
-          <Input
+          <PasswordInput
             label="New password"
-            type="password"
             placeholder="Min 8 characters"
             error={errors.newPassword?.message}
             {...register('newPassword', {
@@ -76,9 +74,8 @@ export default function ChangePasswordPage() {
               },
             })}
           />
-          <Input
+          <PasswordInput
             label="Confirm new password"
-            type="password"
             placeholder="••••••••"
             error={errors.confirmPassword?.message}
             {...register('confirmPassword', {

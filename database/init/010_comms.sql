@@ -17,6 +17,8 @@ ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'forum_mention';
 ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'direct_message';
 ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'quiz_graded';
 ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'course_announcement';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'assignment_available';
+ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'quiz_available';
 
 -- ═════════════════════════════════════════════
 --  FORUMS

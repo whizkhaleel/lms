@@ -179,7 +179,7 @@ io.on('connection', (socket) => {
 // ─────────────────────────────────────────────
 //  EVENT BUS LISTENERS
 // ─────────────────────────────────────────────
-const { notify } = require('./modules/notifications/notifications.service');
+const { notify, notifyMany } = require('./modules/notifications/notifications.service');
 
 // Phase 3 — progress
 eventBus.on('lesson.completed', async ({ userId, lessonId, courseId }) => {
@@ -252,6 +252,46 @@ eventBus.on('quiz.submitted', async ({ userId, courseId, passed, scorePct, quizI
     }
   } catch (err) {
     console.error('[Events] quiz.submitted error:', err.message);
+  }
+});
+
+eventBus.on('assignment.created', async ({ assignmentId, courseId, assignmentTitle }) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT user_id FROM enrollments WHERE course_id = $1 AND status = 'active'`,
+      [courseId]
+    );
+    const userIds = rows.map(r => r.user_id);
+    if (userIds.length > 0) {
+      await notifyMany(io, userIds, {
+        type:  'assignment_available',
+        title: 'New Assignment',
+        body:  `A new assignment "${assignmentTitle}" is now available`,
+        data:  { courseId, assignmentId },
+      });
+    }
+  } catch (err) {
+    console.error('[Events] assignment.created notify error:', err.message);
+  }
+});
+
+eventBus.on('quiz.created', async ({ quizId, courseId, quizTitle }) => {
+  try {
+    const { rows } = await db.query(
+      `SELECT user_id FROM enrollments WHERE course_id = $1 AND status = 'active'`,
+      [courseId]
+    );
+    const userIds = rows.map(r => r.user_id);
+    if (userIds.length > 0) {
+      await notifyMany(io, userIds, {
+        type:  'quiz_available',
+        title: 'New Quiz Available',
+        body:  `A new quiz "${quizTitle}" is now available`,
+        data:  { courseId, quizId },
+      });
+    }
+  } catch (err) {
+    console.error('[Events] quiz.created notify error:', err.message);
   }
 });
 

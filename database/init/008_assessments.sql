@@ -147,7 +147,7 @@ CREATE TABLE assignments (
   max_files              INTEGER NOT NULL DEFAULT 3,
 
   due_date            TIMESTAMP,
-  is_published        BOOLEAN NOT NULL DEFAULT false,
+  is_published        BOOLEAN NOT NULL DEFAULT true,
 
   created_at          TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at          TIMESTAMP NOT NULL DEFAULT NOW()

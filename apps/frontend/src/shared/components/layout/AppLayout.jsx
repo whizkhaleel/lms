@@ -32,8 +32,8 @@ export default function AppLayout() {
 // Auth layout — no sidebar, centered
 export function AuthLayout() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4
-                    bg-[#0D1B2A]">
+    <div className="min-h-screen flex items-center justify-center p-4"
+         style={{ background: 'var(--bg-primary)' }}>
       <Outlet />
     </div>
   );

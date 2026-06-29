@@ -6,7 +6,7 @@ import api from '../../../shared/api/client';
 import Spinner from '../../../shared/components/ui/spinner';
 import Button from '../../../shared/components/ui/Button';
 import Modal from '../../../shared/components/ui/modal';
-import Input, { Select } from '../../../shared/components/ui/input';
+import Input, { PasswordInput, Select } from '../../../shared/components/ui/input';
 import { clsx } from 'clsx';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -259,7 +259,7 @@ export default function AdminUsersPage() {
             <Input label="Last name" name="lastName" required />
           </div>
           <Input label="Email" name="email" type="email" required />
-          <Input label="Password" name="password" type="password" required placeholder="Min 8 chars" />
+          <PasswordInput label="Password" name="password" required placeholder="Min 8 chars" />
           <Select label="Role" name="role" required>
             <option value="student">Student</option>
             <option value="instructor">Instructor</option>

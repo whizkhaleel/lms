@@ -22,6 +22,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
   const timerRef = useRef(null);
+  const submitRef = useRef(null);
 
   // ── Load previous attempts on mount ──────────
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current);
-          handleSubmit(true); // auto-submit on time-up
+          submitRef.current(true); // auto-submit on time-up
           return 0;
         }
         return prev - 1;
@@ -131,6 +132,8 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
     }
   }, [attempt, answers, onComplete]);
 
+  submitRef.current = handleSubmit;
+
   const currentQ = attempt?.questions?.[current];
   const totalQ   = attempt?.questions?.length || 0;
   const answered = Object.keys(answers).filter(id => answers[id]?.length > 0).length;
@@ -141,7 +144,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
   if (state === STATES.IDLE) {
     const lastAttempt = myAttempts[myAttempts.length - 1];
     return (
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 text-center max-w-lg mx-auto">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 md:p-8 text-center w-full max-w-lg mx-auto">
         <div className="text-5xl mb-4">📝</div>
         <h2 className="text-xl font-bold text-white mb-2">Quiz</h2>
 
@@ -162,7 +165,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
           </div>
         )}
 
-        <button
+        <button type="button"
           onClick={handleStart}
           disabled={loading}
           className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
@@ -179,7 +182,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
   if (state === STATES.SUBMITTED && result) {
     const isPending = result.status === 'grading';
     return (
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-8 max-w-2xl mx-auto">
+      <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 sm:p-6 md:p-8 w-full max-w-2xl mx-auto">
 
         {/* Score header */}
         <div className="text-center mb-8">
@@ -246,7 +249,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
         )}
 
         <div className="mt-6 flex gap-3 justify-center">
-          <button
+          <button type="button"
             onClick={() => setState(STATES.IDLE)}
             className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm"
           >
@@ -261,7 +264,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
   //  ACTIVE — question interface
   // ────────────────────────────────────────────
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden max-w-2xl mx-auto">
+    <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden w-full max-w-2xl mx-auto">
 
       {/* Header bar */}
       <div className="flex items-center justify-between px-6 py-4 bg-gray-900 border-b border-gray-700">
@@ -312,7 +315,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
               {currentQ.options.map(opt => {
                 const selected = (answers[currentQ.id] || []).includes(opt.id);
                 return (
-                  <button
+                  <button type="button"
                     key={opt.id}
                     onClick={() => selectOption(currentQ.id, opt.id, currentQ.type)}
                     className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm transition-all ${
@@ -341,7 +344,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
 
       {/* Navigation footer */}
       <div className="flex items-center justify-between px-6 py-4 bg-gray-900 border-t border-gray-700">
-        <button
+        <button type="button"
           onClick={() => setCurrent(p => Math.max(0, p - 1))}
           disabled={current === 0}
           className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm disabled:opacity-30"
@@ -352,7 +355,7 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
         {/* Question dots */}
         <div className="flex gap-1.5">
           {attempt.questions.map((q, i) => (
-            <button
+            <button type="button"
               key={q.id}
               onClick={() => setCurrent(i)}
               className={`w-2.5 h-2.5 rounded-full transition-all ${
@@ -365,14 +368,14 @@ export default function QuizPlayer({ quizId, courseId, onComplete }) {
         </div>
 
         {current < totalQ - 1 ? (
-          <button
+          <button type="button"
             onClick={() => setCurrent(p => p + 1)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
           >
             Next →
           </button>
         ) : (
-          <button
+          <button type="button"
             onClick={() => handleSubmit(false)}
             disabled={loading}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold disabled:opacity-50"

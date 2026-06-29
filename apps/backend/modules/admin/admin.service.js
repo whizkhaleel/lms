@@ -163,7 +163,7 @@ async function uploadLogo(uploadedFile, requestingUser) {
     isPublic: true,
   });
 
-  const logoUrl = `/api/v1/files/${file.id}`;
+  const logoUrl = `/api/v1/files/public/${file.id}`;
 
   // Save the logo URL to institution settings
   await db.query(

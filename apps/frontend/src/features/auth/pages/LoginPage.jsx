@@ -3,7 +3,7 @@ import { Link }       from 'react-router-dom';
 import { BookOpen }   from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth }    from '../../../shared/hooks/useAuth';
-import Input          from '../../../shared/components/ui/input';
+import Input, { PasswordInput } from '../../../shared/components/ui/input';
 import Button         from '../../../shared/components/ui/Button';
 
 export default function LoginPage() {
@@ -37,7 +37,7 @@ export default function LoginPage() {
               onError={() => setLogoError(true)} />
           )}
         </div>
-        <h1 className="font-display font-bold text-2xl text-white">{institutionName}</h1>
+        <h1 className="font-display font-bold text-2xl" style={{ color: 'var(--text-primary)' }}>{institutionName}</h1>
         <p className="text-gray-400 text-sm mt-1">Sign in to continue learning</p>
       </div>
 
@@ -53,9 +53,8 @@ export default function LoginPage() {
               pattern:  { value: /\S+@\S+\.\S+/, message: 'Invalid email' },
             })}
           />
-          <Input
+          <PasswordInput
             label="Password"
-            type="password"
             placeholder="••••••••"
             error={errors.password?.message}
             {...register('password', { required: 'Password is required' })}

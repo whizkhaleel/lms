@@ -64,8 +64,8 @@ async function createAssignment(lessonId, courseId, data, requestingUser) {
        (lesson_id, course_id, title, instructions, max_score, passing_score,
         allow_text_submission, allow_file_submission,
         max_file_size_mb, allowed_file_types, max_files, due_date,
-        is_group_assignment)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        is_group_assignment, is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
      RETURNING *`,
     [
       lessonId, courseId, data.title, data.instructions || null,
@@ -76,11 +76,19 @@ async function createAssignment(lessonId, courseId, data, requestingUser) {
       data.maxFiles ?? 3,
       data.dueDate || null,
       data.isGroupAssignment ?? false,
+      true,
     ]
   );
 
   // Sync calendar event
   syncCalendarEvent(rows[0].id, courseId, data.title, data.dueDate).catch(() => {});
+
+  // Notify enrolled students about the new assignment
+  eventBus.emit('assignment.created', {
+    assignmentId: rows[0].id,
+    courseId,
+    assignmentTitle: data.title,
+  });
 
   return rows[0];
 }

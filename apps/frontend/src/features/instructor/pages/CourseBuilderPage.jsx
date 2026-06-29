@@ -52,8 +52,16 @@ export default function CourseBuilderPage() {
     enableCompletionTracking: false,
     showGradesToStudent: true,
   });
-  const [sections, setSections] = useState([]);
-  const [expandedSections, setExpandedSections] = useState({});
+  const [sections, setSections] = useState(() => {
+    const cached = queryClient.getQueryData(['course-builder', id]);
+    return cached?.sections || [];
+  });
+  const [expandedSections, setExpandedSections] = useState(() => {
+    const cached = queryClient.getQueryData(['course-builder', id]);
+    const expanded = {};
+    (cached?.sections || []).forEach(s => { expanded[s.id] = true; });
+    return expanded;
+  });
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState(null);
@@ -407,8 +415,9 @@ export default function CourseBuilderPage() {
 
       {tab === 'settings' && (
         <div className="max-w-xl space-y-6">
-          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-5">
-            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+          <div className="card space-y-5">
+            <h3 className="font-semibold text-lg flex items-center gap-2"
+                style={{ color: 'var(--text-primary)' }}>
               <Calendar size={16} className="text-blue-400" />
               Course Dates
             </h3>
@@ -428,26 +437,29 @@ export default function CourseBuilderPage() {
             </div>
           </div>
 
-          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-5">
-            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+          <div className="card space-y-5">
+            <h3 className="font-semibold text-lg flex items-center gap-2"
+                style={{ color: 'var(--text-primary)' }}>
               <ToggleLeft size={16} className="text-blue-400" />
               Tracking & Grades
             </h3>
 
-            <label className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
+                   style={{ background: 'var(--bg-secondary)' }}>
               <div>
-                <p className="text-sm font-medium text-white">Enable Completion Tracking</p>
-                <p className="text-xs text-gray-500">Track lesson completion progress for students</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable Completion Tracking</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Track lesson completion progress for students</p>
               </div>
               <input type="checkbox" checked={settings.enableCompletionTracking}
                 onChange={e => setSettings(p => ({ ...p, enableCompletionTracking: e.target.checked }))}
                 className="toggle" />
             </label>
 
-            <label className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
+                   style={{ background: 'var(--bg-secondary)' }}>
               <div>
-                <p className="text-sm font-medium text-white">Show Grades to Students</p>
-                <p className="text-xs text-gray-500">Students can view their scores in the gradebook</p>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Show Grades to Students</p>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students can view their scores in the gradebook</p>
               </div>
               <input type="checkbox" checked={settings.showGradesToStudent}
                 onChange={e => setSettings(p => ({ ...p, showGradesToStudent: e.target.checked }))}
@@ -465,8 +477,8 @@ export default function CourseBuilderPage() {
 
       {tab === 'announcements' && (
         <div className="max-w-3xl space-y-6">
-          <div className="bg-[#0A1628] rounded-xl p-5 border border-gray-800 space-y-4">
-            <h3 className="font-semibold text-white text-lg">Post Announcement</h3>
+          <div className="card space-y-4">
+            <h3 className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>Post Announcement</h3>
             <Input label="Title" value={announceForm.title}
               onChange={e => setAnnounceForm(p => ({ ...p, title: e.target.value }))}
               placeholder="e.g. Assignment deadline extended" />
@@ -485,19 +497,20 @@ export default function CourseBuilderPage() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-semibold text-white text-lg flex items-center gap-2">
+            <h3 className="font-semibold text-lg flex items-center gap-2"
+                style={{ color: 'var(--text-primary)' }}>
               <Megaphone size={16} className="text-blue-400" />
               Previous Announcements
             </h3>
             {!announcementsData || announcementsData.length === 0 ? (
-              <p className="text-gray-500 text-sm">No announcements yet.</p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No announcements yet.</p>
             ) : (
               announcementsData.map(a => (
-                <div key={a.id} className="bg-[#0A1628] rounded-xl p-4 border border-gray-800 space-y-2">
+                <div key={a.id} className="card p-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-white">{a.title}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.title}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                         {a.first_name} {a.last_name} &middot; {new Date(a.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -648,7 +661,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
   const [assignForm, setAssignForm] = useState({
     title: '', instructions: '', maxScore: 100, passingScore: 50,
     dueDate: '', allowTextSubmission: true, allowFileSubmission: true,
-    maxFileSizeMb: 50, maxFiles: 3, isGroupAssignment: false,
+    maxFileSizeMb: 50, maxFiles: 3, isGroupAssignment: false, isPublished: true,
   });
   const [savedAssignmentId, setSavedAssignmentId] = useState(null);
 
@@ -878,7 +891,12 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
       setEditingQ(null);
       toast.success(editingQ ? 'Question updated' : 'Question added');
     },
-    onError: (err) => toast.error(err.response?.data?.message || 'Failed to save question'),
+    onError: (err) => {
+      const data = err.response?.data;
+      const msg = data?.message || 'Failed to save question';
+      if (data?.errors?.length) toast.error(`${msg}: ${data.errors.join('; ')}`);
+      else toast.error(msg);
+    },
   });
 
   const deleteQuestionMut = useMutation({
@@ -1045,8 +1063,8 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
 
             {/* LTI registration form */}
             {showLtiForm && (
-              <div className="mt-3 p-3 bg-[#0A1628] rounded-lg border border-gray-700 space-y-3">
-                <p className="text-xs font-semibold text-gray-300">Register New LTI Tool</p>
+              <div className="mt-3 p-3 card space-y-3">
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Register New LTI Tool</p>
                 <Input label="Tool name" value={ltiForm.title}
                   onChange={e => setLtiForm(p => ({ ...p, title: e.target.value }))}
                   required placeholder="e.g. H5P, Articulate Rise" />
@@ -1272,7 +1290,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
               Shuffle questions
             </label>
             <div className="flex justify-end">
-              <Button onClick={() => {
+              <Button type="button" onClick={() => {
                 saveQuizMut.mutate({ lessonId: lesson.id, courseId, ...quizForm, timeLimitMins: quizForm.timeLimitMins ? parseInt(quizForm.timeLimitMins) : null });
               }} loading={saveQuizMut.isPending}><Save size={14} /> Save Quiz</Button>
             </div>
@@ -1283,16 +1301,16 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                 <h4 className="font-medium text-white">Questions ({questions.length})</h4>
                 <div className="flex gap-2">
                   {savedQuizId && (
-                    <Button variant="secondary" size="sm" onClick={() => onAnalytics?.(savedQuizId)}>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => onAnalytics?.(savedQuizId)}>
                       <BarChart3 size={14} /> Analytics
                     </Button>
                   )}
                   {savedQuizId && (
-                    <Button variant="secondary" size="sm" onClick={() => setShowImportBank(true)}>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setShowImportBank(true)}>
                       <Database size={14} /> Import from Bank
                     </Button>
                   )}
-                  <Button variant="secondary" size="sm" onClick={() => {
+                  <Button type="button" variant="secondary" size="sm" onClick={() => {
                   setEditingQ(null);
                   setQuestionForm({ type: 'multiple_choice', questionText: '', points: 1, modelAnswer: '', options: [
                     { id: 'a', text: '', is_correct: false }, { id: 'b', text: '', is_correct: false },
@@ -1309,7 +1327,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                     <span className="text-xs text-gray-600 ml-2">({q.type} · {q.points}pt)</span>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                    <button className="btn-ghost p-1 rounded text-xs" onClick={() => {
+                    <button type="button" className="btn-ghost p-1 rounded text-xs" onClick={() => {
                       setEditingQ(q);
                       setQuestionForm({
                         type: q.type, questionText: q.question_text, points: q.points,
@@ -1318,7 +1336,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                       });
                       setShowQuestionForm(true);
                     }}>Edit</button>
-                    <button className="btn-ghost p-1 rounded text-xs text-red-400" onClick={() => {
+                    <button type="button" className="btn-ghost p-1 rounded text-xs text-red-400" onClick={() => {
                       setEditingQ(q);
                       deleteQuestionMut.mutate(q.id);
                     }}>Del</button>
@@ -1432,7 +1450,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                 )}
               </div>
               <div className="flex justify-end">
-                <Button onClick={() => {
+                <Button type="button" onClick={() => {
                   saveRubricMut.mutate({
                     name: rubric.name,
                     description: rubric.description,
@@ -1442,7 +1460,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
               </div>
             </div>
             <div className="flex justify-end">
-              <Button onClick={() => {
+              <Button type="button" onClick={() => {
                 saveAssignMut.mutate({ lessonId: lesson.id, courseId, ...assignForm, dueDate: assignForm.dueDate || null });
               }} loading={saveAssignMut.isPending}><Save size={14} /> Save Assignment</Button>
             </div>
@@ -1487,14 +1505,14 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                         setQuestionForm(p => ({ ...p, options: newOpts }));
                       }} placeholder={`Option ${i + 1}`} />
                     {questionForm.options.length > 2 && (
-                      <button className="text-red-400 text-xs"
+                      <button type="button" className="text-red-400 text-xs"
                         onClick={() => setQuestionForm(p => ({ ...p, options: p.options.filter(o => o.id !== opt.id) }))}>
                         X
                       </button>
                     )}
                   </div>
                 ))}
-                <button className="text-xs text-[#3B9EE8] mt-1"
+                <button type="button" className="text-xs text-[#3B9EE8] mt-1"
                   onClick={() => {
                     const newId = String.fromCharCode(97 + questionForm.options.length);
                     setQuestionForm(p => ({ ...p, options: [...p.options, { id: newId, text: '', is_correct: false }] }));
@@ -1513,7 +1531,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
             )}
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
               <Button variant="secondary" type="button" onClick={() => { setShowQuestionForm(false); setEditingQ(null); }}>Cancel</Button>
-              <Button onClick={() => {
+              <Button type="button" onClick={() => {
                 if (!savedQuizId) { toast.error('Save the quiz first'); return; }
                 saveQuestionMut.mutate(questionForm);
               }} loading={saveQuestionMut.isPending}>{editingQ ? 'Update' : 'Add'}</Button>
@@ -1632,8 +1650,8 @@ function ImportBankModal({ open, onClose, courseId, onImport, loading }) {
       </div>
 
       <div className="flex justify-end gap-2 pt-3 border-t border-gray-800 mt-4">
-        <Button variant="secondary" onClick={onClose}>Cancel</Button>
-        <Button onClick={handleImport} loading={loading} disabled={selectedIds.length === 0}>
+        <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button type="button" onClick={handleImport} loading={loading} disabled={selectedIds.length === 0}>
           <Database size={14} /> Import Selected ({selectedIds.length})
         </Button>
       </div>

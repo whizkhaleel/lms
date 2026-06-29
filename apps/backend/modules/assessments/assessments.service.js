@@ -49,7 +49,7 @@ async function getQuizByLesson(lessonId, userId) {
 
   const { rows: countRows } = await db.query(
     `SELECT COUNT(*) AS count FROM quiz_attempts
-     WHERE quiz_id = $1 AND user_id = $2 AND status != 'in_progress'`,
+     WHERE quiz_id = $1 AND user_id = $2 AND status NOT IN ('in_progress', 'abandoned')`,
     [quiz.id, userId]
   );
   const usedAttempts = parseInt(countRows[0].count, 10);
@@ -169,8 +169,9 @@ async function createQuiz(lessonId, courseId, data, requestingUser) {
   const { rows } = await db.query(
     `INSERT INTO quizzes
        (lesson_id, course_id, title, description, max_attempts, time_limit_mins,
-        passing_score_pct, shuffle_questions, shuffle_options, show_answers_after)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+        passing_score_pct, shuffle_questions, shuffle_options, show_answers_after,
+        is_published)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
      RETURNING *`,
     [
       lessonId, courseId,
@@ -181,8 +182,16 @@ async function createQuiz(lessonId, courseId, data, requestingUser) {
       data.shuffleQuestions ?? false,
       data.shuffleOptions ?? false,
       data.showAnswersAfter ?? true,
+      data.isPublished ?? true,
     ]
   );
+
+  eventBus.emit('quiz.created', {
+    quizId: rows[0].id,
+    courseId,
+    quizTitle: data.title || rows[0].title,
+  });
+
   return rows[0];
 }
 
@@ -352,10 +361,10 @@ async function startAttempt(quizId, userId) {
 
   await verifyEnrolled(userId, quiz.course_id);
 
-  // 2. Check attempt limit
+  // 2. Check attempt limit (exclude abandoned and in_progress)
   const { rows: attemptRows } = await db.query(
     `SELECT COUNT(*) AS count FROM quiz_attempts
-     WHERE quiz_id = $1 AND user_id = $2 AND status != 'in_progress'`,
+     WHERE quiz_id = $1 AND user_id = $2 AND status NOT IN ('in_progress', 'abandoned')`,
     [quizId, userId]
   );
   const usedAttempts = parseInt(attemptRows[0].count, 10);
@@ -365,14 +374,15 @@ async function startAttempt(quizId, userId) {
     );
   }
 
-  // 3. Check no active attempt
-  const { rows: activeRows } = await db.query(
-    `SELECT id FROM quiz_attempts WHERE quiz_id = $1 AND user_id = $2 AND status = 'in_progress'`,
+  // 3. Abandon any stale in_progress attempt
+  await db.query(
+    `UPDATE quiz_attempts SET
+       status = 'abandoned',
+       submitted_at = NOW(),
+       time_taken_secs = EXTRACT(EPOCH FROM NOW() - started_at)::INTEGER
+     WHERE quiz_id = $1 AND user_id = $2 AND status = 'in_progress'`,
     [quizId, userId]
   );
-  if (activeRows[0]) {
-    throw ApiError.conflict('You already have an active attempt for this quiz. Submit it first.');
-  }
 
   // 4. Load questions (shuffle if configured)
   const { rows: questions } = await db.query(
@@ -397,7 +407,12 @@ async function startAttempt(quizId, userId) {
   });
 
   const totalPoints    = questions.reduce((sum, q) => sum + q.points, 0);
-  const attemptNumber  = usedAttempts + 1;
+  const { rows: maxRow } = await db.query(
+    `SELECT COALESCE(MAX(attempt_number), 0) + 1 AS next FROM quiz_attempts
+     WHERE quiz_id = $1 AND user_id = $2`,
+    [quizId, userId]
+  );
+  const attemptNumber  = maxRow[0].next;
   const questionOrder  = orderedQuestions.map(q => q.id);
 
   // 5. Create attempt record
@@ -425,7 +440,7 @@ async function submitAttempt(attemptId, userId, answers) {
 
   // 1. Load attempt
   const { rows: atmRows } = await db.query(
-    `SELECT qa.*, q.passing_score_pct, q.show_answers_after, q.time_limit_mins
+    `SELECT qa.*, q.passing_score_pct, q.show_answers_after, q.time_limit_mins, q.lesson_id
      FROM quiz_attempts qa
      JOIN quizzes q ON q.id = qa.quiz_id
      WHERE qa.id = $1 AND qa.user_id = $2`,
@@ -515,7 +530,7 @@ async function submitAttempt(attemptId, userId, answers) {
          ON CONFLICT (user_id, lesson_id, grade_type) DO UPDATE SET
            score = $5, max_score = $6, score_pct = $7,
            passed = $8, quiz_attempt_id = $4, graded_at = NOW()`,
-        [userId, attempt.course_id, attempt.quiz_id,
+        [userId, attempt.course_id, attempt.lesson_id,
          attemptId, earnedPoints, attempt.total_points, scorePct, passed]
       );
     }

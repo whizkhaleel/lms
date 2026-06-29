@@ -22,6 +22,9 @@ const upload = multer({
   // Don't filter here - let the service validate MIME types properly
 });
 
+// Public file serving — no auth required, only serves files marked is_public = true
+router.get('/public/:id', controller.servePublic);
+
 // Upload/delete require authentication
 router.use(authenticate);
 

@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, MessageSquare, Menu, X, ChevronDown, BookOpen } from 'lucide-react';
+import { Sun, Moon, Bell, MessageSquare, Menu, X, ChevronDown, BookOpen } from 'lucide-react';
 import { useQuery }  from '@tanstack/react-query';
 import { useAuth }          from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import NotificationDrawer   from '../../../features/notifications/NotificationDrawer';
 import api                  from '../../api/client';
+import { useTheme }         from '../../contexts/ThemeContext';
 
 export default function Navbar({ onMenuToggle }) {
   const { user, logout, isAdmin, isInstructor } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate         = useNavigate();
+  const { theme, toggle } = useTheme();
 
   const [showNotifs,   setShowNotifs]   = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -29,9 +31,9 @@ export default function Navbar({ onMenuToggle }) {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-40 h-16
-                      bg-[#0D1B2A]/95 backdrop-blur-md
-                      border-b border-[rgba(59,158,232,0.12)]
-                      flex items-center px-4 gap-4">
+                      backdrop-blur-md
+                      border-b flex items-center px-4 gap-4"
+           style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
 
         {/* Sidebar toggle (mobile) */}
         <button
@@ -51,7 +53,8 @@ export default function Navbar({ onMenuToggle }) {
                 onError={() => setLogoError(true)} />
             )}
           </div>
-          <span className="font-display font-bold text-white hidden sm:block text-sm truncate max-w-[200px]">
+          <span className="font-display font-bold hidden sm:block text-sm truncate max-w-[200px]"
+                style={{ color: 'var(--text-primary)' }}>
             {institutionName}
           </span>
         </Link>
@@ -99,6 +102,15 @@ export default function Navbar({ onMenuToggle }) {
               )}
             </button>
 
+            {/* Theme toggle */}
+            <button
+              onClick={toggle}
+              className="btn-ghost p-2 rounded-lg"
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
             {/* User menu */}
             <div className="relative">
               <button
@@ -110,7 +122,8 @@ export default function Navbar({ onMenuToggle }) {
                                 text-white text-sm font-bold">
                   {user.first_name?.[0]}{user.last_name?.[0]}
                 </div>
-                <span className="text-sm hidden sm:block">
+                <span className="text-sm hidden sm:block"
+                      style={{ color: 'var(--text-primary)' }}>
                   {user.first_name}
                 </span>
                 <ChevronDown size={14} className="text-gray-400" />
@@ -124,11 +137,13 @@ export default function Navbar({ onMenuToggle }) {
                   />
                   <div className="absolute right-0 top-full mt-2 w-52 z-50
                                   card py-1 shadow-2xl">
-                    <div className="px-4 py-2 border-b border-gray-700/50 mb-1">
-                      <p className="text-sm font-semibold text-white">
+                    <div className="px-4 py-2 mb-1" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <p className="text-sm font-semibold"
+                         style={{ color: 'var(--text-primary)' }}>
                         {user.first_name} {user.last_name}
                       </p>
-                      <p className="text-xs text-gray-500 capitalize">
+                      <p className="text-xs capitalize"
+                         style={{ color: 'var(--text-secondary)' }}>
                         {user.role === 'super_admin' ? 'Super Admin' : user.role}
                       </p>
                     </div>
@@ -143,14 +158,13 @@ export default function Navbar({ onMenuToggle }) {
                         key={to}
                         to={to}
                         onClick={() => setShowUserMenu(false)}
-                        className="flex px-4 py-2 text-sm text-gray-300
-                                   hover:text-white hover:bg-white/5 transition-colors"
+                        className="flex px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         {label}
                       </Link>
                     ))}
 
-                    <div className="border-t border-gray-700/50 mt-1 pt-1">
+                    <div className="mt-1 pt-1" style={{ borderTop: '1px solid var(--border-color)' }}>
                       <button
                         onClick={() => { setShowUserMenu(false); logout(); }}
                         className="w-full text-left px-4 py-2 text-sm
