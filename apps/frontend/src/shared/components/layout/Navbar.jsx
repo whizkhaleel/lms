@@ -30,10 +30,10 @@ export default function Navbar({ onMenuToggle }) {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-40 h-16
+    <nav className="fixed top-0 left-0 right-0 z-40 h-16
                       backdrop-blur-md
-                      border-b flex items-center px-4 gap-4"
-           style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
+                      border-b flex items-center px-4 gap-4 relative"
+         style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
 
         {/* Sidebar toggle (mobile) */}
         <button
@@ -44,7 +44,10 @@ export default function Navbar({ onMenuToggle }) {
         </button>
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 mr-4">
+        <Link to="/"
+              className="flex items-center gap-2 mr-4
+                         absolute left-1/2 -translate-x-1/2
+                         lg:static lg:translate-x-0 lg:mr-4">
           <div className="w-8 h-8 bg-[#1A6FBF] rounded-lg flex items-center justify-center overflow-hidden">
             {logoError ? (
               <BookOpen size={16} className="text-white" />
@@ -53,7 +56,7 @@ export default function Navbar({ onMenuToggle }) {
                 onError={() => setLogoError(true)} />
             )}
           </div>
-          <span className="font-display font-bold hidden sm:block text-sm truncate max-w-[200px]"
+          <span className="font-display font-bold text-sm truncate max-w-[120px] sm:max-w-[200px]"
                 style={{ color: 'var(--text-primary)' }}>
             {institutionName}
           </span>

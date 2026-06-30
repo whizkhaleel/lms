@@ -37,7 +37,7 @@ export default function LoginPage() {
               onError={() => setLogoError(true)} />
           )}
         </div>
-        <h1 className="font-display font-bold text-2xl" style={{ color: 'var(--text-primary)' }}>{institutionName}</h1>
+        <h1 className="font-display font-bold text-2xl text-center" style={{ color: 'var(--text-primary)' }}>{institutionName}</h1>
         <p className="text-gray-400 text-sm mt-1">Sign in to continue learning</p>
       </div>
 
