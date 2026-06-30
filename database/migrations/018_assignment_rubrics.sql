@@ -2,7 +2,7 @@
 -- Instructors define criteria with max scores per assignment.
 -- Graders assign scores per criterion per submission.
 
-CREATE TABLE assignment_rubrics (
+CREATE TABLE IF NOT EXISTS assignment_rubrics (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id   UUID NOT NULL UNIQUE REFERENCES assignments(id) ON DELETE CASCADE,
   name            VARCHAR(255) NOT NULL DEFAULT '',
@@ -12,7 +12,7 @@ CREATE TABLE assignment_rubrics (
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE rubric_criteria (
+CREATE TABLE IF NOT EXISTS rubric_criteria (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   rubric_id     UUID NOT NULL REFERENCES assignment_rubrics(id) ON DELETE CASCADE,
   description   TEXT NOT NULL,
@@ -22,9 +22,9 @@ CREATE TABLE rubric_criteria (
   updated_at    TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_rubric_criteria_rubric ON rubric_criteria(rubric_id);
+CREATE INDEX IF NOT EXISTS idx_rubric_criteria_rubric ON rubric_criteria(rubric_id);
 
-CREATE TABLE rubric_feedback (
+CREATE TABLE IF NOT EXISTS rubric_feedback (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id   UUID NOT NULL REFERENCES assignment_submissions(id) ON DELETE CASCADE,
   criterion_id    UUID NOT NULL REFERENCES rubric_criteria(id) ON DELETE CASCADE,
@@ -32,7 +32,7 @@ CREATE TABLE rubric_feedback (
   UNIQUE (submission_id, criterion_id)
 );
 
-CREATE INDEX idx_rubric_feedback_submission ON rubric_feedback(submission_id);
+CREATE INDEX IF NOT EXISTS idx_rubric_feedback_submission ON rubric_feedback(submission_id);
 
 CREATE TRIGGER trg_assignment_rubrics_updated_at
   BEFORE UPDATE ON assignment_rubrics

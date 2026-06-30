@@ -58,7 +58,7 @@ module.exports = function errorHandler(err, req, res, next) {
   }
 
   // Unknown / programmer errors
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || err.status || 500;
   const message    = env.NODE_ENV === 'production'
     ? 'Something went wrong'
     : err.message;

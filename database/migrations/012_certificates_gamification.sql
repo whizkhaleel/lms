@@ -9,7 +9,7 @@
 
 CREATE SEQUENCE seq_certificate_number START 1;
 
-CREATE TABLE certificates (
+CREATE TABLE IF NOT EXISTS certificates (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id           UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -19,11 +19,11 @@ CREATE TABLE certificates (
   UNIQUE(user_id, course_id)
 );
 
-CREATE INDEX idx_certificates_user    ON certificates(user_id);
-CREATE INDEX idx_certificates_course  ON certificates(course_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_user    ON certificates(user_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_course  ON certificates(course_id);
 
 -- ── User XP & Levels ────────────────────────
-CREATE TABLE user_xp (
+CREATE TABLE IF NOT EXISTS user_xp (
   user_id     UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   total_xp    INTEGER NOT NULL DEFAULT 0,
   level       INTEGER NOT NULL DEFAULT 1,
@@ -31,7 +31,7 @@ CREATE TABLE user_xp (
 );
 
 -- ── XP Transactions (audit trail for XP) ────
-CREATE TABLE xp_transactions (
+CREATE TABLE IF NOT EXISTS xp_transactions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   amount        INTEGER NOT NULL,
@@ -40,10 +40,10 @@ CREATE TABLE xp_transactions (
   created_at    TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_xp_tx_user ON xp_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_xp_tx_user ON xp_transactions(user_id);
 
 -- ── Badge Definitions ────────────────────────
-CREATE TABLE badges (
+CREATE TABLE IF NOT EXISTS badges (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name          VARCHAR(100) NOT NULL,
   description   TEXT,
@@ -54,14 +54,14 @@ CREATE TABLE badges (
 );
 
 -- ── User Badges (earned) ─────────────────────
-CREATE TABLE user_badges (
+CREATE TABLE IF NOT EXISTS user_badges (
   user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   badge_id  UUID NOT NULL REFERENCES badges(id) ON DELETE CASCADE,
   earned_at TIMESTAMP NOT NULL DEFAULT NOW(),
   PRIMARY KEY(user_id, badge_id)
 );
 
-CREATE INDEX idx_ub_user ON user_badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_ub_user ON user_badges(user_id);
 
 -- ── Add XP column to course_progress ─────────
 ALTER TABLE course_progress ADD COLUMN IF NOT EXISTS xp_earned INTEGER NOT NULL DEFAULT 0;

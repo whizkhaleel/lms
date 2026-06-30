@@ -1,6 +1,6 @@
 -- Course announcements — instructors post, students see on classroom page
 
-CREATE TABLE course_announcements (
+CREATE TABLE IF NOT EXISTS course_announcements (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   instructor_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -10,8 +10,8 @@ CREATE TABLE course_announcements (
   updated_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_ca_course_id    ON course_announcements(course_id);
-CREATE INDEX idx_ca_created_at   ON course_announcements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ca_course_id    ON course_announcements(course_id);
+CREATE INDEX IF NOT EXISTS idx_ca_created_at   ON course_announcements(created_at DESC);
 
 CREATE TRIGGER trg_course_announcements_updated_at
   BEFORE UPDATE ON course_announcements

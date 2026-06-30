@@ -16,7 +16,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ── Track where a payment record came from ────
-CREATE TYPE payment_origin AS ENUM (
+CREATE TYPE IF NOT EXISTS payment_origin AS ENUM (
   'admin_recorded',   -- admin manually logged it (existing Phase 5 flow)
   'external_gateway'  -- pushed in via webhook from the payment site
 );
@@ -57,7 +57,7 @@ ALTER TABLE users
 -- Every inbound webhook call is logged here BEFORE processing.
 -- The external_reference uniqueness above is the hard guarantee;
 -- this table is for visibility/debugging/replay protection.
-CREATE TABLE payment_webhook_events (
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
   id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   external_reference VARCHAR(255) NOT NULL,
   payload            JSONB NOT NULL,
@@ -68,5 +68,5 @@ CREATE TABLE payment_webhook_events (
   received_at        TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_pwe_external_reference ON payment_webhook_events(external_reference);
-CREATE INDEX idx_pwe_processed          ON payment_webhook_events(processed);
+CREATE INDEX IF NOT EXISTS idx_pwe_external_reference ON payment_webhook_events(external_reference);
+CREATE INDEX IF NOT EXISTS idx_pwe_processed          ON payment_webhook_events(processed);

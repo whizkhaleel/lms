@@ -9,7 +9,7 @@
 
 -- ── Lesson Progress ───────────────────────────
 -- One row per (student × lesson). Updated on every heartbeat.
-CREATE TABLE lesson_progress (
+CREATE TABLE IF NOT EXISTS lesson_progress (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   lesson_id           UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -36,11 +36,11 @@ CREATE TABLE lesson_progress (
   UNIQUE(user_id, lesson_id)   -- one progress row per student per lesson
 );
 
-CREATE INDEX idx_lp_user_id     ON lesson_progress(user_id);
-CREATE INDEX idx_lp_lesson_id   ON lesson_progress(lesson_id);
-CREATE INDEX idx_lp_course_id   ON lesson_progress(course_id);
-CREATE INDEX idx_lp_enrollment  ON lesson_progress(enrollment_id);
-CREATE INDEX idx_lp_completed   ON lesson_progress(is_completed);
+CREATE INDEX IF NOT EXISTS idx_lp_user_id     ON lesson_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_lp_lesson_id   ON lesson_progress(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_lp_course_id   ON lesson_progress(course_id);
+CREATE INDEX IF NOT EXISTS idx_lp_enrollment  ON lesson_progress(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_lp_completed   ON lesson_progress(is_completed);
 
 CREATE TRIGGER trg_lesson_progress_updated_at
   BEFORE UPDATE ON lesson_progress
@@ -50,7 +50,7 @@ CREATE TRIGGER trg_lesson_progress_updated_at
 -- Denormalized snapshot per (student × course).
 -- Recomputed whenever a lesson is marked complete.
 -- Exists so the dashboard never needs a slow aggregate query.
-CREATE TABLE course_progress (
+CREATE TABLE IF NOT EXISTS course_progress (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id           UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -81,9 +81,9 @@ CREATE TABLE course_progress (
   UNIQUE(user_id, course_id)
 );
 
-CREATE INDEX idx_cp_user_id    ON course_progress(user_id);
-CREATE INDEX idx_cp_course_id  ON course_progress(course_id);
-CREATE INDEX idx_cp_completed  ON course_progress(is_completed);
+CREATE INDEX IF NOT EXISTS idx_cp_user_id    ON course_progress(user_id);
+CREATE INDEX IF NOT EXISTS idx_cp_course_id  ON course_progress(course_id);
+CREATE INDEX IF NOT EXISTS idx_cp_completed  ON course_progress(is_completed);
 
 CREATE TRIGGER trg_course_progress_updated_at
   BEFORE UPDATE ON course_progress
@@ -91,7 +91,7 @@ CREATE TRIGGER trg_course_progress_updated_at
 
 -- ── Video Bookmarks ───────────────────────────
 -- Students can drop named bookmarks inside a video lesson.
-CREATE TABLE video_bookmarks (
+CREATE TABLE IF NOT EXISTS video_bookmarks (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   lesson_id  UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -100,7 +100,7 @@ CREATE TABLE video_bookmarks (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_vb_user_lesson ON video_bookmarks(user_id, lesson_id);
+CREATE INDEX IF NOT EXISTS idx_vb_user_lesson ON video_bookmarks(user_id, lesson_id);
 
 -- ── Initialise course_progress on new enrollment ──
 -- When a student enrolls, seed a course_progress row immediately.

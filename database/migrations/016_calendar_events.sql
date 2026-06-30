@@ -16,10 +16,10 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   deleted_at     TIMESTAMPTZ
 );
 
-CREATE INDEX idx_calendar_events_course ON calendar_events(course_id);
-CREATE INDEX idx_calendar_events_dates  ON calendar_events(start_date, end_date);
-CREATE INDEX idx_calendar_events_ref    ON calendar_events(reference_type, reference_id);
-CREATE INDEX idx_calendar_events_type   ON calendar_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_course ON calendar_events(course_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_dates  ON calendar_events(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_ref    ON calendar_events(reference_type, reference_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_type   ON calendar_events(event_type);
 
 CREATE TRIGGER trg_calendar_events_updated_at
   BEFORE UPDATE ON calendar_events

@@ -12,7 +12,7 @@
 -- ─────────────────────────────────────────────
 
 -- ── Question type enum ────────────────────────
-CREATE TYPE question_type AS ENUM (
+CREATE TYPE IF NOT EXISTS question_type AS ENUM (
   'multiple_choice',   -- one correct answer from options
   'multi_select',      -- multiple correct answers
   'true_false',        -- boolean
@@ -21,7 +21,7 @@ CREATE TYPE question_type AS ENUM (
 
 -- ── Quizzes ───────────────────────────────────
 -- One quiz per lesson (lesson.type = 'quiz')
-CREATE TABLE quizzes (
+CREATE TABLE IF NOT EXISTS quizzes (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_id           UUID NOT NULL UNIQUE REFERENCES lessons(id) ON DELETE CASCADE,
   course_id           UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -45,15 +45,15 @@ CREATE TABLE quizzes (
   updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_quizzes_lesson_id ON quizzes(lesson_id);
-CREATE INDEX idx_quizzes_course_id ON quizzes(course_id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_lesson_id ON quizzes(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_quizzes_course_id ON quizzes(course_id);
 
 CREATE TRIGGER trg_quizzes_updated_at
   BEFORE UPDATE ON quizzes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── Quiz Questions ────────────────────────────
-CREATE TABLE quiz_questions (
+CREATE TABLE IF NOT EXISTS quiz_questions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quiz_id       UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   type          question_type NOT NULL DEFAULT 'multiple_choice',
@@ -69,11 +69,11 @@ CREATE TABLE quiz_questions (
   created_at    TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
 
 -- ── Quiz Attempts ─────────────────────────────
 -- One row per attempt. A student may have multiple rows if max_attempts > 1.
-CREATE TABLE quiz_attempts (
+CREATE TABLE IF NOT EXISTS quiz_attempts (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quiz_id         UUID NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -99,14 +99,14 @@ CREATE TABLE quiz_attempts (
   question_order  JSONB DEFAULT '[]'
 );
 
-CREATE INDEX idx_qa_quiz_id  ON quiz_attempts(quiz_id);
-CREATE INDEX idx_qa_user_id  ON quiz_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_qa_quiz_id  ON quiz_attempts(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_qa_user_id  ON quiz_attempts(user_id);
 CREATE UNIQUE INDEX idx_qa_user_attempt
   ON quiz_attempts(user_id, quiz_id, attempt_number);
 
 -- ── Quiz Answers ──────────────────────────────
 -- One row per question per attempt.
-CREATE TABLE quiz_answers (
+CREATE TABLE IF NOT EXISTS quiz_answers (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   attempt_id      UUID NOT NULL REFERENCES quiz_attempts(id) ON DELETE CASCADE,
   question_id     UUID NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
@@ -125,11 +125,11 @@ CREATE TABLE quiz_answers (
   UNIQUE(attempt_id, question_id)
 );
 
-CREATE INDEX idx_quiz_answers_attempt_id ON quiz_answers(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_attempt_id ON quiz_answers(attempt_id);
 
 -- ── Assignments ───────────────────────────────
 -- One assignment per lesson (lesson.type = 'assignment')
-CREATE TABLE assignments (
+CREATE TABLE IF NOT EXISTS assignments (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_id           UUID NOT NULL UNIQUE REFERENCES lessons(id) ON DELETE CASCADE,
   course_id           UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -153,15 +153,15 @@ CREATE TABLE assignments (
   updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_assignments_lesson_id ON assignments(lesson_id);
-CREATE INDEX idx_assignments_course_id ON assignments(course_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_lesson_id ON assignments(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_course_id ON assignments(course_id);
 
 CREATE TRIGGER trg_assignments_updated_at
   BEFORE UPDATE ON assignments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── Assignment Submissions ────────────────────
-CREATE TABLE assignment_submissions (
+CREATE TABLE IF NOT EXISTS assignment_submissions (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assignment_id   UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -188,9 +188,9 @@ CREATE TABLE assignment_submissions (
   UNIQUE(assignment_id, user_id, attempt_number)
 );
 
-CREATE INDEX idx_as_assignment_id ON assignment_submissions(assignment_id);
-CREATE INDEX idx_as_user_id       ON assignment_submissions(user_id);
-CREATE INDEX idx_as_status        ON assignment_submissions(status);
+CREATE INDEX IF NOT EXISTS idx_as_assignment_id ON assignment_submissions(assignment_id);
+CREATE INDEX IF NOT EXISTS idx_as_user_id       ON assignment_submissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_as_status        ON assignment_submissions(status);
 
 CREATE TRIGGER trg_submissions_updated_at
   BEFORE UPDATE ON assignment_submissions
@@ -199,7 +199,7 @@ CREATE TRIGGER trg_submissions_updated_at
 -- ── Unified Grades ────────────────────────────
 -- Single grade record per student per lesson (quiz or assignment).
 -- Feeds into the gradebook and transcript views.
-CREATE TABLE grades (
+CREATE TABLE IF NOT EXISTS grades (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   course_id       UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -221,9 +221,9 @@ CREATE TABLE grades (
   UNIQUE(user_id, lesson_id, grade_type)
 );
 
-CREATE INDEX idx_grades_user_id   ON grades(user_id);
-CREATE INDEX idx_grades_course_id ON grades(course_id);
-CREATE INDEX idx_grades_lesson_id ON grades(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_grades_user_id   ON grades(user_id);
+CREATE INDEX IF NOT EXISTS idx_grades_course_id ON grades(course_id);
+CREATE INDEX IF NOT EXISTS idx_grades_lesson_id ON grades(lesson_id);
 
 CREATE TRIGGER trg_grades_updated_at
   BEFORE UPDATE ON grades

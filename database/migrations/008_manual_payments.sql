@@ -6,7 +6,7 @@
 --  bank transfer, etc.) and confirm enrollment.
 -- ─────────────────────────────────────────────
 
-CREATE TABLE manual_payments (
+CREATE TABLE IF NOT EXISTS manual_payments (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   course_id         UUID NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
@@ -31,9 +31,9 @@ CREATE TABLE manual_payments (
   updated_at        TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_mp_user_id    ON manual_payments(user_id);
-CREATE INDEX idx_mp_course_id  ON manual_payments(course_id);
-CREATE INDEX idx_mp_status     ON manual_payments(status);
+CREATE INDEX IF NOT EXISTS idx_mp_user_id    ON manual_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_mp_course_id  ON manual_payments(course_id);
+CREATE INDEX IF NOT EXISTS idx_mp_status     ON manual_payments(status);
 
 CREATE TRIGGER trg_manual_payments_updated_at
   BEFORE UPDATE ON manual_payments

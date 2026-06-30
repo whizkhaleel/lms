@@ -8,28 +8,28 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── Enums ────────────────────────────────────
 
-CREATE TYPE user_role AS ENUM (
+CREATE TYPE IF NOT EXISTS user_role AS ENUM (
   'student',
   'instructor',
   'admin',
   'super_admin'
 );
 
-CREATE TYPE user_status AS ENUM (
+CREATE TYPE IF NOT EXISTS user_status AS ENUM (
   'pending_verification',
   'active',
   'suspended',
   'deactivated'
 );
 
-CREATE TYPE course_status AS ENUM (
+CREATE TYPE IF NOT EXISTS course_status AS ENUM (
   'draft',
   'under_review',
   'published',
   'archived'
 );
 
-CREATE TYPE lesson_type AS ENUM (
+CREATE TYPE IF NOT EXISTS lesson_type AS ENUM (
   'video',
   'pdf',
   'text',
@@ -37,14 +37,14 @@ CREATE TYPE lesson_type AS ENUM (
   'assignment'
 );
 
-CREATE TYPE enrollment_status AS ENUM (
+CREATE TYPE IF NOT EXISTS enrollment_status AS ENUM (
   'active',
   'completed',
   'expired',
   'refunded'
 );
 
-CREATE TYPE submission_status AS ENUM (
+CREATE TYPE IF NOT EXISTS submission_status AS ENUM (
   'submitted',
   'grading',
   'graded',
@@ -53,7 +53,7 @@ CREATE TYPE submission_status AS ENUM (
 
 -- payment_status enum removed — payments handled manually
 
-CREATE TYPE notification_type AS ENUM (
+CREATE TYPE IF NOT EXISTS notification_type AS ENUM (
   'enrollment',
   'lesson_available',
   'assignment_graded',
@@ -63,7 +63,7 @@ CREATE TYPE notification_type AS ENUM (
   'system'
 );
 
-CREATE TYPE storage_backend AS ENUM (
+CREATE TYPE IF NOT EXISTS storage_backend AS ENUM (
   'local',
   'minio',
   's3'

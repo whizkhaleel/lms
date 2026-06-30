@@ -1,7 +1,7 @@
 -- Lesson Availability / Conditional Access
 -- Instructors can restrict lesson access based on conditions.
 
-CREATE TABLE lesson_availability (
+CREATE TABLE IF NOT EXISTS lesson_availability (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lesson_id   UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   conditions  JSONB NOT NULL DEFAULT '[]'::jsonb,

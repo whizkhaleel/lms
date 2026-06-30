@@ -22,7 +22,7 @@ ALTER TYPE notification_type ADD VALUE IF NOT EXISTS 'course_announcement';
 --  FORUMS
 -- ═════════════════════════════════════════════
 
-CREATE TABLE forum_threads (
+CREATE TABLE IF NOT EXISTS forum_threads (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id   UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
   author_id   UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
@@ -43,18 +43,18 @@ CREATE TABLE forum_threads (
   deleted_at  TIMESTAMP
 );
 
-CREATE INDEX idx_ft_course_id    ON forum_threads(course_id);
-CREATE INDEX idx_ft_author_id    ON forum_threads(author_id);
-CREATE INDEX idx_ft_last_post    ON forum_threads(last_post_at DESC);
-CREATE INDEX idx_ft_deleted      ON forum_threads(deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX idx_ft_pinned       ON forum_threads(is_pinned DESC, last_post_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ft_course_id    ON forum_threads(course_id);
+CREATE INDEX IF NOT EXISTS idx_ft_author_id    ON forum_threads(author_id);
+CREATE INDEX IF NOT EXISTS idx_ft_last_post    ON forum_threads(last_post_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ft_deleted      ON forum_threads(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ft_pinned       ON forum_threads(is_pinned DESC, last_post_at DESC);
 
 CREATE TRIGGER trg_forum_threads_updated_at
   BEFORE UPDATE ON forum_threads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- ── Forum Posts (replies) ─────────────────────
-CREATE TABLE forum_posts (
+CREATE TABLE IF NOT EXISTS forum_posts (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   thread_id   UUID NOT NULL REFERENCES forum_threads(id) ON DELETE CASCADE,
   course_id   UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
@@ -70,10 +70,10 @@ CREATE TABLE forum_posts (
   deleted_at  TIMESTAMP
 );
 
-CREATE INDEX idx_fp_thread_id  ON forum_posts(thread_id);
-CREATE INDEX idx_fp_author_id  ON forum_posts(author_id);
-CREATE INDEX idx_fp_parent_id  ON forum_posts(parent_id);
-CREATE INDEX idx_fp_deleted    ON forum_posts(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_fp_thread_id  ON forum_posts(thread_id);
+CREATE INDEX IF NOT EXISTS idx_fp_author_id  ON forum_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_fp_parent_id  ON forum_posts(parent_id);
+CREATE INDEX IF NOT EXISTS idx_fp_deleted    ON forum_posts(deleted_at) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trg_forum_posts_updated_at
   BEFORE UPDATE ON forum_posts
@@ -81,7 +81,7 @@ CREATE TRIGGER trg_forum_posts_updated_at
 
 -- ── Forum Reactions ───────────────────────────
 -- One row per (user × post × emoji). Unique enforced.
-CREATE TABLE forum_reactions (
+CREATE TABLE IF NOT EXISTS forum_reactions (
   id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id  UUID NOT NULL REFERENCES forum_posts(id) ON DELETE CASCADE,
   user_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -91,7 +91,7 @@ CREATE TABLE forum_reactions (
   UNIQUE(post_id, user_id, emoji)
 );
 
-CREATE INDEX idx_fr_post_id ON forum_reactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_fr_post_id ON forum_reactions(post_id);
 
 -- Auto-update thread last_post_at and reply_count when post added
 CREATE OR REPLACE FUNCTION update_thread_on_post()
@@ -120,7 +120,7 @@ CREATE TRIGGER trg_update_thread_on_post
 -- ═════════════════════════════════════════════
 
 -- One conversation row per pair of users (ordered by UUID for consistency)
-CREATE TABLE dm_conversations (
+CREATE TABLE IF NOT EXISTS dm_conversations (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_a_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   user_b_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -140,10 +140,10 @@ CREATE TABLE dm_conversations (
   CHECK(user_a_id < user_b_id)
 );
 
-CREATE INDEX idx_dmc_user_a ON dm_conversations(user_a_id);
-CREATE INDEX idx_dmc_user_b ON dm_conversations(user_b_id);
+CREATE INDEX IF NOT EXISTS idx_dmc_user_a ON dm_conversations(user_a_id);
+CREATE INDEX IF NOT EXISTS idx_dmc_user_b ON dm_conversations(user_b_id);
 
-CREATE TABLE dm_messages (
+CREATE TABLE IF NOT EXISTS dm_messages (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES dm_conversations(id) ON DELETE CASCADE,
   sender_id       UUID NOT NULL REFERENCES users(id) ON DELETE SET NULL,
@@ -154,15 +154,15 @@ CREATE TABLE dm_messages (
   deleted_at      TIMESTAMP
 );
 
-CREATE INDEX idx_dmm_conversation_id ON dm_messages(conversation_id);
-CREATE INDEX idx_dmm_sender_id       ON dm_messages(sender_id);
-CREATE INDEX idx_dmm_created_at      ON dm_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dmm_conversation_id ON dm_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_dmm_sender_id       ON dm_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_dmm_created_at      ON dm_messages(created_at DESC);
 
 -- ═════════════════════════════════════════════
 --  NOTIFICATIONS
 -- ═════════════════════════════════════════════
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type        notification_type NOT NULL,
@@ -175,15 +175,15 @@ CREATE TABLE notifications (
   created_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_notif_user_id    ON notifications(user_id);
-CREATE INDEX idx_notif_is_read    ON notifications(user_id, is_read) WHERE is_read = false;
-CREATE INDEX idx_notif_created_at ON notifications(created_at DESC);
-CREATE INDEX idx_notif_type       ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notif_user_id    ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notif_is_read    ON notifications(user_id, is_read) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS idx_notif_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notif_type       ON notifications(type);
 
 -- ── Notification Preferences ──────────────────
 -- Per-user toggle for each notification type.
 -- Rows only inserted when user changes default (default = all ON).
-CREATE TABLE notification_prefs (
+CREATE TABLE IF NOT EXISTS notification_prefs (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type        notification_type NOT NULL,
@@ -194,4 +194,4 @@ CREATE TABLE notification_prefs (
   UNIQUE(user_id, type)
 );
 
-CREATE INDEX idx_np_user_id ON notification_prefs(user_id);
+CREATE INDEX IF NOT EXISTS idx_np_user_id ON notification_prefs(user_id);
