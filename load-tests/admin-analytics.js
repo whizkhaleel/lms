@@ -23,8 +23,8 @@ export const options = {
 
 function getAuthToken() {
   const loginPayload = JSON.stringify({
-    email: 'admin@lms.local',
-    password: 'password123',
+    email: 'shaheedmahmoudacademy@gmail.com',
+    password: 'SMAbr0!h@rs2026',
   });
   const loginRes = http.post(`${BASE_URL}/api/v1/auth/login`, loginPayload, {
     headers: { 'Content-Type': 'application/json' },

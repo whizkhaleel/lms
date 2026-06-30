@@ -1,7 +1,6 @@
 -- ─────────────────────────────────────────────
---  Seed 001 — Default Admin User
---  Password: Admin@12345 (bcrypt hash)
---  CHANGE THIS IMMEDIATELY after first login.
+--  Seed 001 — Admin User
+--  Password: SMAbr0!h@rs2026 (bcrypt hash)
 -- ─────────────────────────────────────────────
 
 INSERT INTO users (
@@ -15,12 +14,12 @@ INSERT INTO users (
   email_verified_at
 ) VALUES (
   gen_random_uuid(),
-  'admin@lms.local',
-  -- bcrypt hash of 'Admin@12345' with 12 rounds
-  '$2a$12$RICbTtGYVBgqHDy1OPuz9OY.HNHVeL0ZN/DDZS9q7s84nHIb8XnVi',
-  'System',
-  'Admin',
-  'admin',
+  'shaheedmahmoudacademy@gmail.com',
+  -- bcrypt hash of 'SMAbr0!h@rs2026' with 12 rounds
+  '$2b$12$n3Gya3/acKelghHlZIy77O4pZLv3w/LqAVaVZ3ebG1YTvVcgjHTR.',
+  'Shaheed Mahmoud',
+  'Academy',
+  'super_admin',
   'active',
   NOW()
 ) ON CONFLICT (email) DO NOTHING;

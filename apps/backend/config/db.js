@@ -16,8 +16,9 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 
-  // SSL for production
-  ssl: env.NODE_ENV === 'production'
+  // SSL — enable via PGSSLMODE=require env var
+  // Docker-to-Docker Postgres does not need SSL
+  ssl: process.env.PGSSLMODE === 'require'
     ? { rejectUnauthorized: true }
     : false,
 });

@@ -619,7 +619,7 @@ cd apps/backend && node --check <changed-file.js>
 # Test a specific endpoint (replace TOKEN and IDs as needed)
 curl -s -X POST http://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@lms.local","password":"Admin@12345"}' | jq .
+  -d '{"email":"shaheedmahmoudacademy@gmail.com","password":"SMAbr0!h@rs2026"}' | jq .
 
 # Check new tables exist
 docker compose exec postgres psql -U lms_user -d lms_db -c "\dt"
@@ -699,9 +699,8 @@ before Phase 12 (production hardening):
 ## 12. Default Credentials
 
 **Admin account (seeded in `004_seed_admin.sql`):**
-- Email: `admin@lms.local`
-- Password: `Admin@12345`
-- **Change this immediately after first login in any real deployment**
+- Email: `shaheedmahmoudacademy@gmail.com`
+- Password: `SMAbr0!h@rs2026`
 
 ---
 
