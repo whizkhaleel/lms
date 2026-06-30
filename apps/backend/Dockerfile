@@ -19,14 +19,14 @@ EXPOSE 5000
 
 ENTRYPOINT ["dumb-init", "--"]
 
-# ── Development ──────────────────────────────
-FROM base AS development
-CMD ["node", "server.js"]
-
-# ── Production ────────────────────────────────
+# ── Production (default) ──────────────────────
 FROM base AS production
 CMD ["node", "server.js"]
 
 # ── Worker ────────────────────────────────────
 FROM base AS worker
 CMD ["node", "workers/index.js"]
+
+# ── Development ───────────────────────────────
+FROM base AS development
+CMD ["node", "server.js"]
