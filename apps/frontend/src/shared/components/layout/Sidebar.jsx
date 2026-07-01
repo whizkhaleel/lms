@@ -10,10 +10,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useTheme } from '../../contexts/ThemeContext';
 
-const NavItem = ({ to, icon: Icon, label, end = false, badge, light }) => (
+const NavItem = ({ to, icon: Icon, label, end = false, badge, light, onClick }) => (
   <NavLink
     to={to}
     end={end}
+    onClick={onClick}
     className={({ isActive }) => clsx(
       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
       isActive
@@ -69,10 +70,10 @@ export default function Sidebar({ open, onClose }) {
           {user && user.role !== 'instructor' && (
             <>
               <SectionLabel label="Learning" light={isLight} />
-              <NavItem to="/dashboard"  icon={LayoutDashboard} label="My Dashboard" end light={isLight} />
-              <NavItem to="/courses"    icon={Library}         label="Course Catalog" light={isLight} />
-              <NavItem to="/messages"   icon={MessageSquare}   label="Messages" light={isLight} />
-              <NavItem to="/notifications" icon={Bell}         label="Notifications" badge={unreadCount} light={isLight} />
+              <NavItem to="/dashboard"  icon={LayoutDashboard} label="My Dashboard" end light={isLight} onClick={onClose} />
+              <NavItem to="/courses"    icon={Library}         label="Course Catalog" light={isLight} onClick={onClose} />
+              <NavItem to="/messages"   icon={MessageSquare}   label="Messages" light={isLight} onClick={onClose} />
+              <NavItem to="/notifications" icon={Bell}         label="Notifications" badge={unreadCount} light={isLight} onClick={onClose} />
             </>
           )}
 
@@ -80,12 +81,12 @@ export default function Sidebar({ open, onClose }) {
           {isInstructor && (
             <>
               <SectionLabel label="Teaching" light={isLight} />
-              <NavItem to="/instructor"              icon={GraduationCap} label="Instructor Panel" end light={isLight} />
-              <NavItem to="/instructor/courses"      icon={BookOpen}      label="My Courses" light={isLight} />
-              <NavItem to="/instructor/students"   icon={Users}         label="My Students" light={isLight} />
-              <NavItem to="/instructor/gradebook"  icon={Award}        label="Gradebook" light={isLight} />
-              <NavItem to="/instructor/submissions"  icon={FileText}      label="Submissions" light={isLight} />
-              <NavItem to="/instructor/analytics"    icon={BarChart3}     label="Analytics" light={isLight} />
+              <NavItem to="/instructor"              icon={GraduationCap} label="Instructor Panel" end light={isLight} onClick={onClose} />
+              <NavItem to="/instructor/courses"      icon={BookOpen}      label="My Courses" light={isLight} onClick={onClose} />
+              <NavItem to="/instructor/students"   icon={Users}         label="My Students" light={isLight} onClick={onClose} />
+              <NavItem to="/instructor/gradebook"  icon={Award}        label="Gradebook" light={isLight} onClick={onClose} />
+              <NavItem to="/instructor/submissions"  icon={FileText}      label="Submissions" light={isLight} onClick={onClose} />
+              <NavItem to="/instructor/analytics"    icon={BarChart3}     label="Analytics" light={isLight} onClick={onClose} />
             </>
           )}
 
@@ -93,21 +94,21 @@ export default function Sidebar({ open, onClose }) {
           {isAdmin && (
             <>
               <SectionLabel label="Administration" light={isLight} />
-              <NavItem to="/admin"             icon={Settings}        label="Admin Panel" end light={isLight} />
-              <NavItem to="/admin/users"       icon={Users}           label="Users" light={isLight} />
-              <NavItem to="/admin/courses"     icon={BookOpen}        label="All Courses" light={isLight} />
-              <NavItem to="/admin/courses/new" icon={PlusCircle}     label="Create Course" light={isLight} />
-              <NavItem to="/admin/enrollments" icon={GraduationCap}   label="Enrollments" light={isLight} />
-              <NavItem to="/admin/analytics"   icon={BarChart3}       label="Analytics" light={isLight} />
-              <NavItem to="/admin/payments"  icon={CreditCard}      label="Payments" light={isLight} />
-              <NavItem to="/admin/audit-logs" icon={FileText}        label="Audit Logs" light={isLight} />
-              <NavItem to="/admin/settings"   icon={Settings}        label="Settings" light={isLight} />
+              <NavItem to="/admin"             icon={Settings}        label="Admin Panel" end light={isLight} onClick={onClose} />
+              <NavItem to="/admin/users"       icon={Users}           label="Users" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/courses"     icon={BookOpen}        label="All Courses" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/courses/new" icon={PlusCircle}     label="Create Course" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/enrollments" icon={GraduationCap}   label="Enrollments" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/analytics"   icon={BarChart3}       label="Analytics" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/payments"  icon={CreditCard}      label="Payments" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/audit-logs" icon={FileText}        label="Audit Logs" light={isLight} onClick={onClose} />
+              <NavItem to="/admin/settings"   icon={Settings}        label="Settings" light={isLight} onClick={onClose} />
             </>
           )}
 
           {/* Separator + Calendar (visible to all roles) */}
           <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-            <NavItem to="/calendar" icon={CalendarIcon} label="Calendar" light={isLight} />
+            <NavItem to="/calendar" icon={CalendarIcon} label="Calendar" light={isLight} onClick={onClose} />
           </div>
 
         </div>
@@ -117,6 +118,7 @@ export default function Sidebar({ open, onClose }) {
           <div className="p-3" style={{ borderTop: '1px solid var(--border-color)' }}>
             <NavLink
               to="/profile"
+              onClick={onClose}
               className={clsx('flex items-center gap-3 p-2.5 rounded-xl transition-colors', isLight ? 'hover:bg-black/5' : 'hover:bg-white/5')}
             >
               <div className="w-8 h-8 rounded-full bg-[#1A6FBF]

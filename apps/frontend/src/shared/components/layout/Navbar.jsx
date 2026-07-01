@@ -45,10 +45,8 @@ export default function Navbar({ onMenuToggle }) {
 
         {/* Logo */}
         <Link to="/"
-              className="flex items-center gap-2 mr-4
-                         absolute left-1/2 -translate-x-1/2
-                         lg:static lg:translate-x-0 lg:mr-4">
-          <div className="w-8 h-8 bg-[#1A6FBF] rounded-lg flex items-center justify-center overflow-hidden">
+              className="flex items-center justify-center gap-2 flex-1 lg:flex-none lg:justify-start lg:mr-4 min-w-0">
+          <div className="w-8 h-8 bg-[#1A6FBF] rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
             {logoError ? (
               <BookOpen size={16} className="text-white" />
             ) : (
@@ -56,7 +54,7 @@ export default function Navbar({ onMenuToggle }) {
                 onError={() => setLogoError(true)} />
             )}
           </div>
-          <span className="font-display font-bold text-sm truncate max-w-[120px] sm:max-w-[200px]"
+          <span className="font-display font-bold text-sm truncate max-w-[100px] sm:max-w-[200px]"
                 style={{ color: 'var(--text-primary)' }}>
             {institutionName}
           </span>

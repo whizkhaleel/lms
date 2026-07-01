@@ -41,7 +41,7 @@ export default function LoginPage() {
         <p className="text-gray-400 text-sm mt-1">Sign in to continue learning</p>
       </div>
 
-      <div className="card">
+      <div className="card p-4 sm:p-6">
         <form onSubmit={handleSubmit(login)} className="flex flex-col gap-4">
           <Input
             label="Email"
