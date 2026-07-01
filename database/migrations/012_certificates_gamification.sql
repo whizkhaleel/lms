@@ -7,7 +7,7 @@
 -- ── Certificates ─────────────────────────────
 -- Each student gets one certificate per completed course.
 
-CREATE SEQUENCE seq_certificate_number START 1;
+CREATE SEQUENCE IF NOT EXISTS seq_certificate_number START 1;
 
 CREATE TABLE IF NOT EXISTS certificates (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
