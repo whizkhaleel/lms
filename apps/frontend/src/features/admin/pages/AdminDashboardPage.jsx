@@ -22,16 +22,17 @@ export default function AdminDashboardPage() {
   const stats = [
     { label: 'Total Users',      value: u?.total?.toLocaleString() || '0',       icon: Users,         color: 'text-blue-400',   to: '/admin/users' },
     { label: 'Active Learners',  value: engagement?.activeLast30d?.toLocaleString() || '0', icon: Zap, color: 'text-green-400',  to: '/admin/analytics' },
-    { label: 'Total Courses',    value: c?.published?.toLocaleString() || '0',  icon: BookOpen,      color: 'text-purple-400', to: '/admin/courses' },
+    { label: 'Total Courses',    value: c?.total?.toLocaleString() || '0',       icon: BookOpen,      color: 'text-purple-400', to: '/admin/courses' },
+    { label: 'Published',        value: c?.published?.toLocaleString() || '0',   icon: BookOpen,      color: 'text-amber-400',  to: '/admin/courses' },
   ];
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="px-4 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Admin Dashboard</h1>
           <p className="text-gray-400 text-sm mt-1">
-            {u?.total || 0} users · {c?.published || 0} courses · {engagement?.totalEnrollments || 0} enrollments
+            {u?.total || 0} users · {c?.total || 0} courses · {engagement?.totalEnrollments || 0} enrollments
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -41,7 +42,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {stats.map(({ label, value, icon: Icon, color, to }) => (
           <Link key={label} to={to} className="card hover:border-[#3B9EE8]/40 transition-colors">
             <Icon size={20} className={clsx(color, 'mb-2')} />
@@ -52,7 +53,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Engagement row */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="card">
           <div className="flex items-center gap-3 mb-4">
             <Target size={20} className="text-amber-400" />
