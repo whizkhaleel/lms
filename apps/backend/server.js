@@ -372,10 +372,24 @@ eventBus.on('enrollment.created', async () => { await require('./shared/utils/ca
 eventBus.on('course.completed',   async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
 eventBus.on('user.registered',    async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
 
+// ── Run pending DB migrations ───────────────────────
+async function runMigrations() {
+  try {
+    const { execSync } = require('child_process');
+    const migrateScript = require('path').join(__dirname, '..', '..', 'database', 'migrate.js');
+    console.log('\n[Server] Checking pending DB migrations...');
+    execSync(`node "${migrateScript}"`, { stdio: 'inherit', env: process.env });
+  } catch (err) {
+    console.error('[Server] Migration failed:', err.message);
+    process.exit(1);
+  }
+}
+
 // ── Connect DB and Redis before accepting traffic ────
 (async () => {
   try {
     await db.checkConnection();
+    await runMigrations();
     await redisClient.connectWithRetry();
 
     const { verifyConnection } = require('./shared/mailer/mailer');

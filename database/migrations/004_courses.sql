@@ -54,6 +54,10 @@ CREATE TABLE IF NOT EXISTS courses (
   rating_count          INTEGER DEFAULT 0,
 
   published_at          TIMESTAMP,
+  start_date            TIMESTAMP,
+  end_date              TIMESTAMP,
+  enable_completion_tracking BOOLEAN NOT NULL DEFAULT false,
+  show_grades_to_student      BOOLEAN NOT NULL DEFAULT true,
   metadata              JSONB DEFAULT '{}',
   created_at            TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMP NOT NULL DEFAULT NOW(),
