@@ -121,7 +121,7 @@ export default function Navbar({ onMenuToggle }) {
                 <div className="w-8 h-8 rounded-full bg-[#1A6FBF]
                                 flex items-center justify-center
                                 text-white text-sm font-bold">
-                  {user.first_name?.[0]}{user.last_name?.[0]}
+                  {user.first_name?.[0] || user.email?.[0]?.toUpperCase() || '?'}{user.last_name?.[0] || ''}
                 </div>
                 <span className="text-sm hidden sm:block"
                       style={{ color: 'var(--text-primary)' }}>

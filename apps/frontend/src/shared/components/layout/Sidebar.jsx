@@ -124,7 +124,7 @@ export default function Sidebar({ open, onClose }) {
               <div className="w-8 h-8 rounded-full bg-[#1A6FBF]
                               flex items-center justify-center
                               text-white text-xs font-bold flex-shrink-0">
-                {user.first_name?.[0]}{user.last_name?.[0]}
+                {user.first_name?.[0] || user.email?.[0]?.toUpperCase() || '?'}{user.last_name?.[0] || ''}
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate"

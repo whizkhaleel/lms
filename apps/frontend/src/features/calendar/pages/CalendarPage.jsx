@@ -114,7 +114,7 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display font-bold text-2xl text-white flex items-center gap-3">
           <CalendarIcon size={24} className="text-[#3B9EE8]" />
@@ -128,7 +128,7 @@ export default function CalendarPage() {
         </Button>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Calendar grid */}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-4">
@@ -147,9 +147,18 @@ export default function CalendarPage() {
           ) : (
             <div className="card overflow-hidden">
               <div className="grid grid-cols-7 border-b border-gray-800">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                  <div key={d} className="p-2 text-center text-xs font-semibold text-gray-500 uppercase">
-                    {d}
+                {[
+                  { short: 'Su', full: 'Sun' },
+                  { short: 'Mo', full: 'Mon' },
+                  { short: 'Tu', full: 'Tue' },
+                  { short: 'We', full: 'Wed' },
+                  { short: 'Th', full: 'Thu' },
+                  { short: 'Fr', full: 'Fri' },
+                  { short: 'Sa', full: 'Sat' },
+                ].map(d => (
+                  <div key={d.full} className="p-2 text-center text-xs font-semibold text-gray-500 uppercase">
+                    <span className="hidden sm:inline">{d.full}</span>
+                    <span className="sm:hidden">{d.short}</span>
                   </div>
                 ))}
               </div>
@@ -165,7 +174,7 @@ export default function CalendarPage() {
                     <div
                       key={key}
                       onClick={() => setSelectedDate(day)}
-                      className={`min-h-[100px] p-1.5 border-b border-r border-gray-800/50 cursor-pointer
+                      className={`min-h-[60px] sm:min-h-[100px] p-1.5 border-b border-r border-gray-800/50 cursor-pointer
                         transition-colors hover:bg-white/[0.02]
                         ${!isCurrentMonth ? 'opacity-30' : ''}
                         ${isSelected ? 'bg-[#3B9EE8]/10 ring-1 ring-[#3B9EE8]/30' : ''}`}
@@ -208,7 +217,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Side panel — selected day events */}
-        <div className="w-80 flex-shrink-0">
+        <div className="w-full lg:w-80 flex-shrink-0">
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-white text-sm">

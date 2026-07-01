@@ -16,7 +16,7 @@ const createUserSchema = Joi.object({
   email:     Joi.string().email({ tlds: { allow: false } }).lowercase().required(),
   firstName: Joi.string().trim().min(1).max(100).required(),
   lastName:  Joi.string().trim().min(1).max(100).required(),
-  role:      Joi.string().valid('student', 'instructor').required(),
+  role:      Joi.string().valid('student', 'instructor', 'admin').required(),
   password:  Joi.string().min(6).max(128).optional(),
 });
 

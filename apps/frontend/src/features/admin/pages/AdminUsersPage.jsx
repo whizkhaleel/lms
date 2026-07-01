@@ -192,7 +192,7 @@ export default function AdminUsersPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#1A6FBF] flex items-center justify-center text-white text-xs font-bold">
-                          {u.first_name?.[0]}{u.last_name?.[0]}
+                          {u.first_name?.[0] || u.email?.[0]?.toUpperCase() || '?'}{u.last_name?.[0] || ''}
                         </div>
                         <div>
                           <p className="text-white font-medium">{u.first_name} {u.last_name}</p>

@@ -46,7 +46,7 @@ export default function ProfilePage() {
         <form onSubmit={handleSubmit((d) => updateMutation.mutate(d))} className="flex flex-col gap-4">
           <div className="flex items-center gap-4 mb-2">
             <div className="w-16 h-16 rounded-full bg-[#1A6FBF] flex items-center justify-center text-white text-xl font-bold">
-              {user?.first_name?.[0]}{user?.last_name?.[0]}
+              {user?.first_name?.[0] || user?.email?.[0]?.toUpperCase() || '?'}{user?.last_name?.[0] || ''}
             </div>
             <div>
               <p className="text-white font-semibold">{user?.first_name} {user?.last_name}</p>
