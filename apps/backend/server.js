@@ -376,7 +376,7 @@ eventBus.on('user.registered',    async () => { await require('./shared/utils/ca
 async function runMigrations() {
   try {
     const { execSync } = require('child_process');
-    const migrateScript = require('path').join(__dirname, '..', '..', 'database', 'migrate.js');
+    const migrateScript = require('path').join(__dirname, 'database', 'migrate.js');
     console.log('\n[Server] Checking pending DB migrations...');
     execSync(`node "${migrateScript}"`, { stdio: 'inherit', env: process.env });
   } catch (err) {
