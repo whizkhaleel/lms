@@ -52,16 +52,16 @@ export default function AdminCoursesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Course Management</h1>
           <p className="text-gray-400 text-sm mt-1">{total} total courses</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search courses…" className="input pl-9 py-2 text-sm w-64" />
+              placeholder="Search courses…" className="input pl-9 py-2 text-sm w-full sm:w-64" />
           </div>
           <Link to="/admin/courses/new">
             <Button><Plus size={16} /> New Course</Button>
@@ -80,10 +80,10 @@ export default function AdminCoursesPage() {
               <thead>
                 <tr className="border-b border-gray-800 text-gray-500 text-xs uppercase tracking-wider">
                   <th className="text-left px-5 py-3 font-medium">Course</th>
-                  <th className="text-left px-5 py-3 font-medium">Instructor</th>
+                  <th className="text-left px-5 py-3 font-medium hidden lg:table-cell">Instructor</th>
                   <th className="text-left px-5 py-3 font-medium">Status</th>
                   <th className="text-left px-5 py-3 font-medium">Students</th>
-                  <th className="text-left px-5 py-3 font-medium">Created</th>
+                  <th className="text-left px-5 py-3 font-medium hidden lg:table-cell">Created</th>
                   <th className="text-right px-5 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -94,14 +94,14 @@ export default function AdminCoursesPage() {
                       <p className="text-white font-medium">{c.title}</p>
                       <p className="text-gray-500 text-xs">{c.slug}</p>
                     </td>
-                    <td className="px-5 py-4 text-gray-400 text-xs">
+                    <td className="px-5 py-4 text-gray-400 text-xs hidden lg:table-cell">
                       {c.instructor_name || '—'}
                     </td>
                     <td className="px-5 py-4">
                       <span className={clsx('badge', STATUS_BADGE[c.status])}>{c.status}</span>
                     </td>
                     <td className="px-5 py-4 text-gray-400">{c.student_count || 0}</td>
-                    <td className="px-5 py-4 text-gray-500 text-xs">
+                    <td className="px-5 py-4 text-gray-500 text-xs hidden lg:table-cell">
                       {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                     </td>
                     <td className="px-5 py-4 text-right">

@@ -36,7 +36,7 @@ export default function InstructorDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Instructor Panel</h1>
           <p className="text-gray-400 text-sm mt-1">Manage your courses and students</p>
@@ -44,7 +44,7 @@ export default function InstructorDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total Courses',    value: courses.length, icon: BookOpen, color: 'text-blue-400' },
           { label: 'Published',        value: published,       icon: Eye,      color: 'text-green-400' },
@@ -73,12 +73,13 @@ export default function InstructorDashboardPage() {
             <p className="text-gray-500 text-sm mt-2">Courses assigned by admin will appear here</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-700 text-left">
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Course</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Students</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Students</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -104,7 +105,7 @@ export default function InstructorDashboardPage() {
                       {course.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-gray-300">{course.student_count || 0}</td>
+                  <td className="px-5 py-4 text-gray-300 hidden sm:table-cell">{course.student_count || 0}</td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
                       <Link to={`/instructor/courses/${course.id}/edit`}
@@ -137,6 +138,7 @@ export default function InstructorDashboardPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
