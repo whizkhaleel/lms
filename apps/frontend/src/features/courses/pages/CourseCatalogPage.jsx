@@ -52,9 +52,9 @@ export default function CourseCatalogPage() {
   const loading = isStudent ? enrolledQuery.isLoading : isLoading;
 
   return (
-    <div>
+    <div className="px-4 sm:px-6">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <h1 className="font-display font-bold text-3xl text-white mb-2">
           {isStudent ? 'My Courses' : 'Course Catalog'}
         </h1>
@@ -85,6 +85,22 @@ export default function CourseCatalogPage() {
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>
+          </select>
+        </div>
+      )}
+
+      {/* Mobile category filter */}
+      {!isStudent && (
+        <div className="lg:hidden mb-4">
+          <select
+            className="input w-full"
+            value={category}
+            onChange={e => set('category', e.target.value)}
+          >
+            <option value="">All categories</option>
+            {cats?.map(cat => (
+              <option key={cat.id} value={cat.slug}>{cat.name}</option>
+            ))}
           </select>
         </div>
       )}

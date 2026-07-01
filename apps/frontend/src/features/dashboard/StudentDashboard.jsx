@@ -63,14 +63,14 @@ export default function StudentDashboard() {
     <div className="max-w-6xl mx-auto px-4 py-8">
 
       {/* ── Header row ── */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">My Learning</h1>
           <p className="text-gray-400 mt-1">Pick up where you left off</p>
         </div>
         <Link
           to="/achievements"
-          className="card p-3 flex items-center gap-3 hover:border-gray-600 transition-colors min-w-[200px]"
+          className="card p-3 flex items-center gap-3 hover:border-gray-600 transition-colors sm:min-w-[200px]"
         >
           <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
             <Trophy size={20} className="text-amber-400" />
