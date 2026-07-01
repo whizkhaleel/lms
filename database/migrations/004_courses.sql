@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS idx_courses_instructor_id ON courses(instructor_id);
 CREATE INDEX IF NOT EXISTS idx_courses_category_id   ON courses(category_id);
 CREATE INDEX IF NOT EXISTS idx_courses_status        ON courses(status);
 CREATE INDEX IF NOT EXISTS idx_courses_deleted_at    ON courses(deleted_at) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_courses_is_free       ON courses(is_free);
+-- idx_courses_is_free removed — column dropped by 015_remove_pricing.sql
 
 -- Full-text search index
 CREATE INDEX IF NOT EXISTS idx_courses_fts ON courses
