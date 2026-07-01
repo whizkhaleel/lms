@@ -18,4 +18,4 @@ ALTER TABLE manual_payments
   DROP COLUMN IF EXISTS payment_method;
 
 -- Remove default_currency from institution_settings
-DELETE FROM institution_settings WHERE key = 'default_currency';
+DELETE FROM institution_settings WHERE setting_key = 'default_currency';
