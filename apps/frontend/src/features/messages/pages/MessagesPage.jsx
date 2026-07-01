@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Send, MessageSquare, Trash2, Plus, Search } from 'lucide-react';
+import { Send, MessageSquare, Trash2, Plus, Search, ArrowLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api             from '../../../shared/api/client';
 import { useAuthStore }from '../../../shared/stores/authStore';
@@ -109,7 +109,7 @@ export default function MessagesPage() {
     <><div className="flex h-[calc(100vh-130px)] card p-0 overflow-hidden">
 
       {/* Conversations sidebar */}
-      <div className="w-72 flex-shrink-0 border-r border-gray-700 flex flex-col">
+      <div className={clsx('w-72 flex-shrink-0 border-r border-gray-700 flex-col', activeConv ? 'hidden lg:flex' : 'flex')}>
         <div className="p-4 border-b border-gray-700 flex items-center justify-between">
           <h2 className="font-semibold text-white">Messages</h2>
           <button onClick={() => setShowCompose(true)}
@@ -167,6 +167,11 @@ export default function MessagesPage() {
 
           {/* Header */}
           <div className="flex items-center gap-3 px-5 py-3 border-b border-gray-700">
+            <button onClick={() => setConv(null)}
+                    className="lg:hidden p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                    title="Back to conversations">
+              <ArrowLeft size={18} />
+            </button>
             <div className="w-8 h-8 rounded-full bg-[#1A6FBF] flex items-center
                             justify-center text-white text-xs font-bold">
               {activeConv.other_user_name?.charAt(0)}
@@ -240,7 +245,7 @@ export default function MessagesPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-gray-600 flex-col gap-3">
+        <div className="hidden lg:flex flex-1 items-center justify-center text-gray-600 flex-col gap-3">
           <MessageSquare size={40} />
           <p className="text-sm">Select a conversation to start messaging</p>
         </div>
