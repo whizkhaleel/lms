@@ -12,12 +12,15 @@
 -- ─────────────────────────────────────────────
 
 -- ── Question type enum ────────────────────────
-CREATE TYPE IF NOT EXISTS question_type AS ENUM (
-  'multiple_choice',   -- one correct answer from options
-  'multi_select',      -- multiple correct answers
-  'true_false',        -- boolean
-  'short_answer'       -- free text, manually graded
-);
+DO $$ BEGIN
+  CREATE TYPE question_type AS ENUM (
+    'multiple_choice',
+    'multi_select',
+    'true_false',
+    'short_answer'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── Quizzes ───────────────────────────────────
 -- One quiz per lesson (lesson.type = 'quiz')

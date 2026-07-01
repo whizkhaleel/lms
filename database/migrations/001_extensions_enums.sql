@@ -8,63 +8,61 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ── Enums ────────────────────────────────────
 
-CREATE TYPE IF NOT EXISTS user_role AS ENUM (
-  'student',
-  'instructor',
-  'admin',
-  'super_admin'
-);
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM (
+    'student', 'instructor', 'admin', 'super_admin'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS user_status AS ENUM (
-  'pending_verification',
-  'active',
-  'suspended',
-  'deactivated'
-);
+DO $$ BEGIN
+  CREATE TYPE user_status AS ENUM (
+    'pending_verification', 'active', 'suspended', 'deactivated'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS course_status AS ENUM (
-  'draft',
-  'under_review',
-  'published',
-  'archived'
-);
+DO $$ BEGIN
+  CREATE TYPE course_status AS ENUM (
+    'draft', 'under_review', 'published', 'archived'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS lesson_type AS ENUM (
-  'video',
-  'pdf',
-  'text',
-  'quiz',
-  'assignment'
-);
+DO $$ BEGIN
+  CREATE TYPE lesson_type AS ENUM (
+    'video', 'pdf', 'text', 'quiz', 'assignment'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS enrollment_status AS ENUM (
-  'active',
-  'completed',
-  'expired',
-  'refunded'
-);
+DO $$ BEGIN
+  CREATE TYPE enrollment_status AS ENUM (
+    'active', 'completed', 'expired', 'refunded'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS submission_status AS ENUM (
-  'submitted',
-  'grading',
-  'graded',
-  'returned'
-);
+DO $$ BEGIN
+  CREATE TYPE submission_status AS ENUM (
+    'submitted', 'grading', 'graded', 'returned'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- payment_status enum removed — payments handled manually
 
-CREATE TYPE IF NOT EXISTS notification_type AS ENUM (
-  'enrollment',
-  'lesson_available',
-  'assignment_graded',
-  'announcement',
-  'certificate_issued',
-  'payment_receipt',
-  'system'
-);
+DO $$ BEGIN
+  CREATE TYPE notification_type AS ENUM (
+    'enrollment', 'lesson_available', 'assignment_graded',
+    'announcement', 'certificate_issued', 'payment_receipt', 'system'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TYPE IF NOT EXISTS storage_backend AS ENUM (
-  'local',
-  'minio',
-  's3'
-);
+DO $$ BEGIN
+  CREATE TYPE storage_backend AS ENUM (
+    'local', 'minio', 's3'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;

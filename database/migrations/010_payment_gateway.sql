@@ -16,10 +16,13 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 -- ── Track where a payment record came from ────
-CREATE TYPE IF NOT EXISTS payment_origin AS ENUM (
-  'admin_recorded',   -- admin manually logged it (existing Phase 5 flow)
-  'external_gateway'  -- pushed in via webhook from the payment site
-);
+DO $$ BEGIN
+  CREATE TYPE payment_origin AS ENUM (
+    'admin_recorded',
+    'external_gateway'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ── Extend manual_payments table ──────────────
 -- user_id becomes nullable: a webhook payment may arrive
