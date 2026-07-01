@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
 
 CREATE INDEX IF NOT EXISTS idx_qa_quiz_id  ON quiz_attempts(quiz_id);
 CREATE INDEX IF NOT EXISTS idx_qa_user_id  ON quiz_attempts(user_id);
-CREATE UNIQUE INDEX idx_qa_user_attempt
+CREATE UNIQUE INDEX IF NOT EXISTS idx_qa_user_attempt
   ON quiz_attempts(user_id, quiz_id, attempt_number);
 
 -- ── Quiz Answers ──────────────────────────────

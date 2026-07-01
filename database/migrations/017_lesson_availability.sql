@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS lesson_availability (
   updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idx_lesson_avail_lesson ON lesson_availability(lesson_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_lesson_avail_lesson ON lesson_availability(lesson_id);
 
 DROP TRIGGER IF EXISTS trg_lesson_availability_updated_at ON lesson_availability;
 CREATE TRIGGER trg_lesson_availability_updated_at

@@ -46,11 +46,11 @@ ALTER TABLE assignment_submissions
 ALTER TABLE assignment_submissions
   DROP CONSTRAINT IF EXISTS assignment_submissions_assignment_id_user_id_attempt_number_key;
 
-CREATE UNIQUE INDEX idx_as_individual_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_as_individual_unique
   ON assignment_submissions (assignment_id, user_id, attempt_number)
   WHERE group_id IS NULL;
 
-CREATE UNIQUE INDEX idx_as_group_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_as_group_unique
   ON assignment_submissions (assignment_id, group_id, attempt_number)
   WHERE group_id IS NOT NULL;
 
