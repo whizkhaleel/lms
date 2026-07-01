@@ -42,6 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_lp_course_id   ON lesson_progress(course_id);
 CREATE INDEX IF NOT EXISTS idx_lp_enrollment  ON lesson_progress(enrollment_id);
 CREATE INDEX IF NOT EXISTS idx_lp_completed   ON lesson_progress(is_completed);
 
+DROP TRIGGER IF EXISTS trg_lesson_progress_updated_at ON lesson_progress;
 CREATE TRIGGER trg_lesson_progress_updated_at
   BEFORE UPDATE ON lesson_progress
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -85,6 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_cp_user_id    ON course_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_cp_course_id  ON course_progress(course_id);
 CREATE INDEX IF NOT EXISTS idx_cp_completed  ON course_progress(is_completed);
 
+DROP TRIGGER IF EXISTS trg_course_progress_updated_at ON course_progress;
 CREATE TRIGGER trg_course_progress_updated_at
   BEFORE UPDATE ON course_progress
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -124,6 +126,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_init_course_progress ON enrollments;
 CREATE TRIGGER trg_init_course_progress
   AFTER INSERT ON enrollments
   FOR EACH ROW EXECUTE FUNCTION init_course_progress();

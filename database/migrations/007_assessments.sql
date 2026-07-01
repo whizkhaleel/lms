@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
 CREATE INDEX IF NOT EXISTS idx_quizzes_lesson_id ON quizzes(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_quizzes_course_id ON quizzes(course_id);
 
+DROP TRIGGER IF EXISTS trg_quizzes_updated_at ON quizzes;
 CREATE TRIGGER trg_quizzes_updated_at
   BEFORE UPDATE ON quizzes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -159,6 +160,7 @@ CREATE TABLE IF NOT EXISTS assignments (
 CREATE INDEX IF NOT EXISTS idx_assignments_lesson_id ON assignments(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_assignments_course_id ON assignments(course_id);
 
+DROP TRIGGER IF EXISTS trg_assignments_updated_at ON assignments;
 CREATE TRIGGER trg_assignments_updated_at
   BEFORE UPDATE ON assignments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -195,6 +197,7 @@ CREATE INDEX IF NOT EXISTS idx_as_assignment_id ON assignment_submissions(assign
 CREATE INDEX IF NOT EXISTS idx_as_user_id       ON assignment_submissions(user_id);
 CREATE INDEX IF NOT EXISTS idx_as_status        ON assignment_submissions(status);
 
+DROP TRIGGER IF EXISTS trg_submissions_updated_at ON assignment_submissions;
 CREATE TRIGGER trg_submissions_updated_at
   BEFORE UPDATE ON assignment_submissions
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -228,6 +231,7 @@ CREATE INDEX IF NOT EXISTS idx_grades_user_id   ON grades(user_id);
 CREATE INDEX IF NOT EXISTS idx_grades_course_id ON grades(course_id);
 CREATE INDEX IF NOT EXISTS idx_grades_lesson_id ON grades(lesson_id);
 
+DROP TRIGGER IF EXISTS trg_grades_updated_at ON grades;
 CREATE TRIGGER trg_grades_updated_at
   BEFORE UPDATE ON grades
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

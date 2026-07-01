@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS question_bank_categories (
 
 CREATE INDEX IF NOT EXISTS idx_qbc_course_id ON question_bank_categories(course_id);
 
+DROP TRIGGER IF EXISTS trg_qbc_updated_at ON question_bank_categories;
 CREATE TRIGGER trg_qbc_updated_at
   BEFORE UPDATE ON question_bank_categories
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS question_bank (
 CREATE INDEX IF NOT EXISTS idx_qb_category_id  ON question_bank(category_id);
 CREATE INDEX IF NOT EXISTS idx_qb_type         ON question_bank(type);
 
+DROP TRIGGER IF EXISTS trg_qb_updated_at ON question_bank;
 CREATE TRIGGER trg_qb_updated_at
   BEFORE UPDATE ON question_bank
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

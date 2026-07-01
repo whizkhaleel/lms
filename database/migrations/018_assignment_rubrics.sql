@@ -34,10 +34,12 @@ CREATE TABLE IF NOT EXISTS rubric_feedback (
 
 CREATE INDEX IF NOT EXISTS idx_rubric_feedback_submission ON rubric_feedback(submission_id);
 
+DROP TRIGGER IF EXISTS trg_assignment_rubrics_updated_at ON assignment_rubrics;
 CREATE TRIGGER trg_assignment_rubrics_updated_at
   BEFORE UPDATE ON assignment_rubrics
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
+DROP TRIGGER IF EXISTS trg_rubric_criteria_updated_at ON rubric_criteria;
 CREATE TRIGGER trg_rubric_criteria_updated_at
   BEFORE UPDATE ON rubric_criteria
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

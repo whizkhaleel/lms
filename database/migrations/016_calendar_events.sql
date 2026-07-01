@@ -21,6 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_calendar_events_dates  ON calendar_events(start_d
 CREATE INDEX IF NOT EXISTS idx_calendar_events_ref    ON calendar_events(reference_type, reference_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_events_type   ON calendar_events(event_type);
 
+DROP TRIGGER IF EXISTS trg_calendar_events_updated_at ON calendar_events;
 CREATE TRIGGER trg_calendar_events_updated_at
   BEFORE UPDATE ON calendar_events
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS course_groups (
 
 CREATE INDEX IF NOT EXISTS idx_cg_course_id ON course_groups(course_id);
 
+DROP TRIGGER IF EXISTS trg_cg_updated_at ON course_groups;
 CREATE TRIGGER trg_cg_updated_at
   BEFORE UPDATE ON course_groups
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

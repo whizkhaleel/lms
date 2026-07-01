@@ -35,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_mp_user_id    ON manual_payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_mp_course_id  ON manual_payments(course_id);
 CREATE INDEX IF NOT EXISTS idx_mp_status     ON manual_payments(status);
 
+DROP TRIGGER IF EXISTS trg_manual_payments_updated_at ON manual_payments;
 CREATE TRIGGER trg_manual_payments_updated_at
   BEFORE UPDATE ON manual_payments
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

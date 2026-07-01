@@ -49,6 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_ft_last_post    ON forum_threads(last_post_at DES
 CREATE INDEX IF NOT EXISTS idx_ft_deleted      ON forum_threads(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_ft_pinned       ON forum_threads(is_pinned DESC, last_post_at DESC);
 
+DROP TRIGGER IF EXISTS trg_forum_threads_updated_at ON forum_threads;
 CREATE TRIGGER trg_forum_threads_updated_at
   BEFORE UPDATE ON forum_threads
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -75,6 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_fp_author_id  ON forum_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_fp_parent_id  ON forum_posts(parent_id);
 CREATE INDEX IF NOT EXISTS idx_fp_deleted    ON forum_posts(deleted_at) WHERE deleted_at IS NULL;
 
+DROP TRIGGER IF EXISTS trg_forum_posts_updated_at ON forum_posts;
 CREATE TRIGGER trg_forum_posts_updated_at
   BEFORE UPDATE ON forum_posts
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -111,6 +113,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_thread_on_post ON forum_posts;
 CREATE TRIGGER trg_update_thread_on_post
   AFTER INSERT OR UPDATE ON forum_posts
   FOR EACH ROW EXECUTE FUNCTION update_thread_on_post();

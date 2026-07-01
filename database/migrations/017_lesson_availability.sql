@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS lesson_availability (
 
 CREATE UNIQUE INDEX idx_lesson_avail_lesson ON lesson_availability(lesson_id);
 
+DROP TRIGGER IF EXISTS trg_lesson_availability_updated_at ON lesson_availability;
 CREATE TRIGGER trg_lesson_availability_updated_at
   BEFORE UPDATE ON lesson_availability
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

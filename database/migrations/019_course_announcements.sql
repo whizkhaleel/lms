@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS course_announcements (
 CREATE INDEX IF NOT EXISTS idx_ca_course_id    ON course_announcements(course_id);
 CREATE INDEX IF NOT EXISTS idx_ca_created_at   ON course_announcements(created_at DESC);
 
+DROP TRIGGER IF EXISTS trg_course_announcements_updated_at ON course_announcements;
 CREATE TRIGGER trg_course_announcements_updated_at
   BEFORE UPDATE ON course_announcements
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
