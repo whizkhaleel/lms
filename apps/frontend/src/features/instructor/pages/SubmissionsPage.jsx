@@ -186,7 +186,7 @@ export default function SubmissionsPage() {
       </div>
 
       {/* Submissions table */}
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-x-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
           <h2 className="font-semibold text-white">
             Submissions ({submissions.length})

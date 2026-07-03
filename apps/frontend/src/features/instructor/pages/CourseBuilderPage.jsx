@@ -247,7 +247,7 @@ export default function CourseBuilderPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">
             {isExactlyInstructor ? 'Manage Curriculum' : isEditing ? 'Edit Course' : 'Create Course'}
@@ -280,7 +280,7 @@ export default function CourseBuilderPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-gray-800 mb-6">
+      <div className="flex gap-0 border-b border-gray-800 mb-6 overflow-x-auto">
         {['details', 'curriculum', 'settings', 'announcements', 'question-bank', 'groups'].filter(t => {
           if (isExactlyInstructor && t === 'details') return false;
           if (!isEditing && (t === 'announcements' || t === 'question-bank' || t === 'groups' || t === 'settings')) return false;
@@ -1276,7 +1276,7 @@ function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons
                 onChange={e => setQuizForm(p => ({ ...p, description: e.target.value }))}
                 rows={2} className="input resize-none" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Input label="Passing score (%)" type="number" value={quizForm.passingScorePct}
                 onChange={e => setQuizForm(p => ({ ...p, passingScorePct: +e.target.value }))} />
               <Input label="Time limit (min)" type="number" value={quizForm.timeLimitMins}

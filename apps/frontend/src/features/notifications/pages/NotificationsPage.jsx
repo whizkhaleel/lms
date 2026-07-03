@@ -170,7 +170,7 @@ export default function NotificationsPage() {
                   {TYPE_ICONS[n.type] || '🔔'}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
                     <p className={clsx('text-sm', !n.is_read ? 'text-white font-semibold' : 'text-gray-300')}>
                       {n.title}
                     </p>

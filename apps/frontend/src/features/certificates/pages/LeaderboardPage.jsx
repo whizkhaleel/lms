@@ -60,7 +60,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Leaderboard table */}
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-x-auto">
         {isLoading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
         ) : entries.length === 0 ? (

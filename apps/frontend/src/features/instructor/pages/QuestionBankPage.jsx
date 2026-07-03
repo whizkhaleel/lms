@@ -176,9 +176,9 @@ export default function QuestionBankPage() {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* ── Sidebar: Categories ── */}
-        <div className="w-64 shrink-0">
+        <div className="w-full lg:w-64 shrink-0">
           <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Categories</h2>

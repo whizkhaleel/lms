@@ -102,7 +102,7 @@ export default function AdminEnrollmentsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display font-bold text-2xl text-white">Enrollment Management</h1>
           <p className="text-gray-400 text-sm mt-1">

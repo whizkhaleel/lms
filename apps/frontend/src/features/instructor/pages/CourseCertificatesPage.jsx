@@ -26,7 +26,7 @@ export default function CourseCertificatesPage() {
         </div>
       </div>
 
-      <div className="card p-0 overflow-hidden">
+      <div className="card p-0 overflow-x-auto">
         {isLoading ? (
           <div className="flex justify-center py-12"><Spinner /></div>
         ) : certs.length === 0 ? (

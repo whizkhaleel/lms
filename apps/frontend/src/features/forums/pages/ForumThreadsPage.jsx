@@ -77,7 +77,7 @@ export default function ForumThreadsPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="font-display font-bold text-2xl text-white flex items-center gap-3">
           <MessageSquare size={24} className="text-[#3B9EE8]" />
           Discussions
@@ -85,7 +85,7 @@ export default function ForumThreadsPage() {
         <Button onClick={() => setShowCreate(true)}><Plus size={16} /> New Thread</Button>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
@@ -95,7 +95,7 @@ export default function ForumThreadsPage() {
             className="input pl-9"
           />
         </div>
-        <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
+        <div className="flex gap-1 bg-gray-900 rounded-lg p-1 flex-wrap">
           {[
             { key: 'latest', label: 'Latest', icon: Clock },
             { key: 'popular', label: 'Popular', icon: ThumbsUp },
@@ -154,7 +154,7 @@ export default function ForumThreadsPage() {
                   </div>
                   <h3 className="font-medium text-white text-base truncate">{thread.title}</h3>
                   <p className="text-sm text-gray-500 mt-1 line-clamp-1">{thread.content}</p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-600">
+                  <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 flex-wrap">
                     <span>by {thread.author?.first_name || 'Unknown'}</span>
                     <span className="flex items-center gap-1"><MessageSquare size={12} /> {thread.reply_count}</span>
                     <span className="flex items-center gap-1"><Eye size={12} /> {thread.view_count}</span>
