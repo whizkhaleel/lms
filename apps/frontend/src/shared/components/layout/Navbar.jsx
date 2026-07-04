@@ -31,8 +31,8 @@ export default function Navbar({ onMenuToggle }) {
   return (
     <>
     <nav className="fixed top-0 left-0 right-0 z-40 h-16
-                      backdrop-blur-md
-                      border-b flex items-center px-4 gap-4 relative"
+                       backdrop-blur-md
+                       border-b flex items-center px-4 gap-4"
          style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
 
         {/* Sidebar toggle (mobile) */}
@@ -103,7 +103,7 @@ export default function Navbar({ onMenuToggle }) {
               )}
             </button>
 
-            {/* Theme toggle */}
+            {/* Theme */}
             <button
               onClick={toggle}
               className="btn-ghost p-2 rounded-lg"
