@@ -94,9 +94,31 @@ async function rejectPending(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function telegramEnroll(req, res, next) {
+  try {
+    const env = require('../../config/env');
+    const token = req.headers['x-telegram-token'];
+    if (!token || token !== env.TELEGRAM_INTEGRATION_TOKEN) {
+      throw ApiError.unauthorized('Invalid telegram integration token');
+    }
+
+    const { email, firstName, lastName, phone, courseId, paymentReference } = req.body;
+    if (!email || !courseId || !paymentReference) {
+      throw ApiError.badRequest('Missing required fields: email, courseId, paymentReference');
+    }
+
+    const result = await service.telegramEnroll({
+      email, firstName, lastName, phone, courseId, paymentReference
+    });
+
+    ApiResponse.created(res, result, 'Telegram enrollment pending approval recorded');
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   enroll, myEnrollments, listEnrollments,
   manualEnroll, courseEnrollments, revokeEnrollment,
   paymentWebhook,
   listPending, approvePending, rejectPending,
+  telegramEnroll,
 };

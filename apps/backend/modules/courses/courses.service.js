@@ -169,7 +169,7 @@ async function getCourse(slug, requestingUserId = null) {
 // ── Create course ─────────────────────────────
 async function createCourse({ title, description, shortDescription, categoryId,
   level, language, tags, requirements, objectives, instructorId,
-  startDate, endDate, enableCompletionTracking, showGradesToStudent }) {
+  startDate, endDate, enableCompletionTracking, showGradesToStudent, metadata }) {
 
   const slug = await uniqueSlug(title);
 
@@ -178,9 +178,10 @@ async function createCourse({ title, description, shortDescription, categoryId,
        (title, slug, description, short_description, category_id,
         level, language, tags, requirements, objectives,
         instructor_id, status,
-        start_date, end_date, enable_completion_tracking, show_grades_to_student)
+        start_date, end_date, enable_completion_tracking, show_grades_to_student,
+        metadata)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft',
-             $12,$13,$14,$15)
+             $12,$13,$14,$15,$16)
      RETURNING *`,
     [
       title, slug, description, shortDescription, categoryId,
@@ -193,6 +194,7 @@ async function createCourse({ title, description, shortDescription, categoryId,
       startDate || null, endDate || null,
       enableCompletionTracking ?? false,
       showGradesToStudent ?? true,
+      JSON.stringify(metadata || {}),
     ]
   );
 
@@ -239,8 +241,9 @@ async function updateCourse(courseId, updates, requestingUser) {
        end_date          = $12,
        enable_completion_tracking = COALESCE($13, enable_completion_tracking),
        show_grades_to_student     = COALESCE($14, show_grades_to_student),
+       metadata          = COALESCE($15, metadata),
        updated_at        = NOW()
-     WHERE id = $15
+     WHERE id = $16
      RETURNING *`,
     [
       updates.title, slug, updates.description, updates.shortDescription,
@@ -253,6 +256,7 @@ async function updateCourse(courseId, updates, requestingUser) {
       updates.endDate || null,
       updates.enableCompletionTracking,
       updates.showGradesToStudent,
+      updates.metadata     ? JSON.stringify(updates.metadata) : null,
       courseId,
     ]
   );
@@ -619,6 +623,7 @@ async function uploadThumbnail(courseId, uploadedFile, uploadedBy, requestingUse
     'UPDATE courses SET thumbnail_file_id = $1, updated_at = NOW() WHERE id = $2',
     [file.id, courseId]
   );
+  eventBus.emit('course.updated', { courseId, instructorId: requestingUser.id });
   return file;
 }
 

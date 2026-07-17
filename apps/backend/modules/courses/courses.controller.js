@@ -21,6 +21,11 @@ const courseSchema = Joi.object({
   endDate:                  Joi.date().iso().allow(null),
   enableCompletionTracking: Joi.boolean(),
   showGradesToStudent:      Joi.boolean(),
+  metadata:                 Joi.object({
+    price:    Joi.number().min(0).optional(),
+    duration: Joi.string().max(50).allow('', null).optional(),
+    currency: Joi.string().max(3).optional(),
+  }).optional(),
 });
 
 const sectionSchema = Joi.object({

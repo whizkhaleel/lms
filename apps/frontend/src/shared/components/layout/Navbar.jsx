@@ -33,7 +33,7 @@ export default function Navbar({ onMenuToggle }) {
     <nav className="fixed top-0 left-0 right-0 z-40 h-16
                        backdrop-blur-md
                        border-b flex items-center px-4 gap-4"
-         style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
+         style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
 
         {/* Sidebar toggle (mobile) */}
         <button

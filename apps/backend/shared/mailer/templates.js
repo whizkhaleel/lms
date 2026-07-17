@@ -44,14 +44,17 @@ function welcomeCredentialsEmail({ firstName, email, tempPassword, courseTitle }
 
     <div style="background:#0D1B2A; border-radius:12px; padding:20px; margin:24px 0;
                 border:1px solid rgba(59,158,232,0.2);">
-      <p style="margin:0 0 8px; font-size:12px; color:#7A9BBF; text-transform:uppercase; letter-spacing:1px;">
-        Your login details
+      <p style="margin:0 0 10px; font-size:12px; color:#7A9BBF; text-transform:uppercase; letter-spacing:1px;">
+        Your Account Details
+      </p>
+      <p style="margin:0 0 6px; font-size:14px;">
+        <strong style="color:#3B9EE8;">LMS Website:</strong> <a href="${env.APP_URL}" style="color:#E2EBF5; text-decoration:underline;">${env.APP_URL}</a>
       </p>
       <p style="margin:0 0 6px; font-size:14px;">
         <strong style="color:#3B9EE8;">Email:</strong> ${email}
       </p>
       <p style="margin:0; font-size:14px;">
-        <strong style="color:#3B9EE8;">Temporary password:</strong>
+        <strong style="color:#3B9EE8;">Temporary Password:</strong>
         <code style="background:#1e3a5f; padding:2px 8px; border-radius:6px; color:#fff;">${tempPassword}</code>
       </p>
     </div>
@@ -82,6 +85,14 @@ function enrollmentConfirmedEmail({ firstName, courseTitle }) {
       Your payment has been confirmed and you've been enrolled in
       <strong>${courseTitle}</strong>. Log in with your existing account to start learning.
     </p>
+    
+    <div style="background:#0D1B2A; border-radius:12px; padding:20px; margin:24px 0;
+                border:1px solid rgba(59,158,232,0.2);">
+      <p style="margin:0; font-size:14px;">
+        <strong style="color:#3B9EE8;">LMS Website:</strong> <a href="${env.APP_URL}" style="color:#E2EBF5; text-decoration:underline;">${env.APP_URL}</a>
+      </p>
+    </div>
+
     <div style="text-align:center; margin:28px 0 12px;">
       <a href="${loginUrl}"
          style="display:inline-block; background:#1A6FBF; color:#fff; text-decoration:none;

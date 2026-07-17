@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
 import Input, { Textarea, Select } from '../../../shared/components/ui/input';
@@ -18,16 +18,46 @@ export default function AdminCreateCoursePage() {
 
   const { data: instructors } = useQuery({
     queryKey: ['instructors'],
-    queryFn: () => api.get('/users', { params: { role: 'instructor', limit: 200 } })
+    queryFn: () => api.get('/users', { params: { role: 'instructor,admin,super_admin', limit: 200 } })
       .then(r => r.data.data || []),
   });
 
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+
   const createMutation = useMutation({
     mutationFn: (data) => api.post('/courses', data),
-    onSuccess: () => {
-      toast.success('Course created');
+    onSuccess: async (res) => {
+      const courseId = res.data.data?.course?.id;
+      if (!courseId) {
+        toast.success('Course created');
+        navigate('/admin/courses');
+        return;
+      }
+
+      if (thumbnailFile) {
+        setUploadingThumbnail(true);
+        const toastId = toast.loading('Uploading course image...');
+        const fd = new FormData();
+        fd.append('thumbnail', thumbnailFile);
+
+        try {
+          await api.post(`/courses/${courseId}/thumbnail`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          toast.success('Course created and image uploaded successfully!', { id: toastId });
+        } catch (err) {
+          console.error(err);
+          toast.error('Course created, but image upload failed', { id: toastId });
+        } finally {
+          setUploadingThumbnail(false);
+        }
+      } else {
+        toast.success('Course created');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['admin-courses'] });
-      navigate('/admin/courses');
+      navigate(`/instructor/courses/${courseId}/edit`);
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Failed to create course'),
   });
@@ -43,6 +73,8 @@ export default function AdminCreateCoursePage() {
     tags: '',
     objectives: '',
     requirements: '',
+    price: '',
+    duration: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -90,6 +122,11 @@ export default function AdminCreateCoursePage() {
       tags,
       objectives,
       requirements,
+      metadata: {
+        price: form.price ? Number(form.price) : 0,
+        duration: form.duration || '',
+        currency: 'NGN',
+      },
     });
   }
 
@@ -141,6 +178,26 @@ export default function AdminCreateCoursePage() {
         </div>
 
         <div className="card space-y-5">
+          <h2 className="font-semibold text-white text-lg">Course Image (Thumbnail)</h2>
+          <div className="flex items-center gap-4">
+            <label className="btn-secondary btn cursor-pointer flex items-center gap-2">
+              <Upload size={14} /> Upload Image
+              <input type="file" accept="image/*" className="hidden"
+                onChange={e => {
+                  if (e.target.files[0]) {
+                    setThumbnailFile(e.target.files[0]);
+                  }
+                }} />
+            </label>
+            {thumbnailFile && (
+              <span className="text-gray-400 text-sm">
+                Selected: {thumbnailFile.name} ({(thumbnailFile.size / 1024).toFixed(1)} KB)
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="card space-y-5">
           <h2 className="font-semibold text-white text-lg">Instructor Assignment</h2>
 
           <Select label="Assign Instructor *" value={form.instructorId} onChange={handleChange('instructorId')} error={errors.instructorId}>
@@ -154,6 +211,15 @@ export default function AdminCreateCoursePage() {
         <div className="card space-y-5">
           <h2 className="font-semibold text-white text-lg">Metadata</h2>
 
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Price (NGN)" type="number" min="0"
+              value={form.price} onChange={handleChange('price')}
+              placeholder="e.g. 5000" />
+            <Input label="Duration"
+              value={form.duration} onChange={handleChange('duration')}
+              placeholder="e.g. 8 Weeks" />
+          </div>
+
           <Input label="Tags" placeholder="Comma-separated: react, typescript, hooks"
             value={form.tags} onChange={handleChange('tags')} />
 
@@ -165,10 +231,10 @@ export default function AdminCreateCoursePage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button type="submit" loading={createMutation.isPending}>
+          <Button type="submit" loading={createMutation.isPending || uploadingThumbnail}>
             <Save size={16} /> Create Course
           </Button>
-          <Button type="button" variant="ghost" onClick={() => navigate('/admin/courses')}>
+          <Button type="button" variant="ghost" onClick={() => navigate('/admin/courses')} disabled={uploadingThumbnail}>
             Cancel
           </Button>
         </div>

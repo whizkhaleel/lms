@@ -6,6 +6,9 @@ const controller   = require('./enrollments.controller');
 const authenticate = require('../../shared/middleware/authenticate');
 const authorize    = require('../../shared/middleware/authorize');
 
+// ── Telegram Integration (Unauthenticated) ──
+router.post('/telegram-enroll', controller.telegramEnroll);
+
 router.use(authenticate);
 
 // ── Student ───────────────────────────────────

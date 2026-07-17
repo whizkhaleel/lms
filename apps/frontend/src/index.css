@@ -19,19 +19,102 @@
 }
 
 .light {
-  --bg-primary: #F8FAFC;
+  --bg-primary: #F1F5F9; /* Smoother gray backdrop instead of stark white */
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #2563EB;
+  --bg-tertiary: #1A6FBF; /* Aligned with SMA brand royal blue accent */
   --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --border-color: rgba(100, 116, 139, 0.25);
+  --text-secondary: #475569; /* Much higher contrast for body text readability */
+  --border-color: rgba(148, 163, 184, 0.25);
   --card-bg: #FFFFFF;
-  --card-border: rgba(100, 116, 139, 0.15);
-  --btn-secondary-bg: #F1F5F9;
-  --btn-secondary-border: rgba(100, 116, 139, 0.25);
+  --card-border: rgba(148, 163, 184, 0.15);
+  --btn-secondary-bg: #E2E8F0;
+  --btn-secondary-border: rgba(148, 163, 184, 0.35);
   --btn-secondary-text: #0F172A;
   --scrollbar-thumb: #CBD5E1;
   --scrollbar-thumb-hover: #94A3B8;
+}
+
+/* Light mode overrides for hardcoded dark-theme background classes */
+.light [class*="bg-[#0D1B2A]"],
+.light .bg-\[\#0D1B2A\] {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.light [class*="bg-[#112236]"],
+.light .bg-\[\#112236\] {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+}
+
+.light [class*="bg-[#0A1628]"],
+.light .bg-\[\#0A1628\] {
+  background-color: #F8FAFC !important;
+  color: var(--text-primary) !important;
+}
+
+.light [class*="bg-[#1B2D4A]"],
+.light .bg-\[\#1B2D4A\] {
+  background-color: rgba(26, 111, 191, 0.1) !important;
+  color: #1A6FBF !important;
+}
+
+/* Light mode overrides for border colors */
+.light [class*="border-gray-800"],
+.light [class*="border-gray-700"] {
+  border-color: var(--border-color) !important;
+}
+
+/* Light mode overrides for text colors */
+.light [class*="text-gray-400"] {
+  color: var(--text-secondary) !important;
+}
+
+.light [class*="text-gray-300"] {
+  color: #334155 !important;
+}
+
+.light [class*="text-gray-200"] {
+  color: #1E293B !important;
+}
+
+.light [class*="text-gray-500"] {
+  color: #64748B !important;
+}
+
+/* Specific sticky layout overrides (e.g. Gradebooks) */
+.light th.sticky,
+.light td.sticky {
+  background-color: var(--bg-secondary) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+/* Light mode overrides for text-white classes that are not on dark buttons/backgrounds */
+.light [class*="text-white"]:not(.btn-primary):not(.btn-danger):not([class*="bg-red-"]):not([class*="bg-blue-"]):not([class*="bg-green-"]):not([class*="bg-indigo-"]):not([class*="bg-purple-"]):not([class*="bg-pink-"]):not([class*="bg-yellow-"]):not([class*="bg-amber-"]):not([class*="bg-[#1A6FBF]"]):not([class*="bg-[#3B9EE8]"]) {
+  color: var(--text-primary) !important;
+}
+
+/* Override light text hover states to be dark and visible */
+.light [class*="hover:text-white"]:hover,
+.light [class*="hover:text-gray-100"]:hover,
+.light [class*="hover:text-gray-200"]:hover,
+.light [class*="hover:text-gray-300"]:hover,
+.light [class*="hover:text-gray-50"]:hover {
+  color: var(--text-primary) !important;
+}
+
+/* Override transparent white hover backgrounds to use soft dark overlays in light mode */
+.light [class*="hover:bg-white/5"]:hover {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+}
+.light [class*="hover:bg-white/10"]:hover {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+.light [class*="bg-white/5"] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+.light [class*="bg-white/10"] {
+  background-color: rgba(15, 23, 42, 0.06) !important;
 }
 
 @layer base {
@@ -53,7 +136,7 @@
 @layer components {
   /* ── Input base ── */
   .input {
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
     @apply w-full rounded-xl px-4 py-3 text-sm outline-none
            placeholder-gray-500

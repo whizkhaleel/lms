@@ -361,13 +361,23 @@ eventBus.on('user.forgot_password', async ({ email, firstName, resetToken }) => 
 });
 
 // ── Cache invalidation via events ──────────
-eventBus.on('course.created',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
-eventBus.on('course.updated',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
-eventBus.on('course.published', async () => {
+eventBus.on('course.created',  async ({ courseId }) => {
+  await require('./shared/utils/cache').invalidatePattern('courses:list:*');
+  require('./shared/utils/laravelSync').syncCourse(courseId).catch(err => console.error('[Event course.created] Laravel sync error:', err.message));
+});
+eventBus.on('course.updated',  async ({ courseId }) => {
+  await require('./shared/utils/cache').invalidatePattern('courses:list:*');
+  require('./shared/utils/laravelSync').syncCourse(courseId).catch(err => console.error('[Event course.updated] Laravel sync error:', err.message));
+});
+eventBus.on('course.published', async ({ courseId }) => {
   await require('./shared/utils/cache').invalidatePattern('courses:list:*');
   await require('./shared/utils/cache').invalidate('admin:analytics');
+  require('./shared/utils/laravelSync').syncCourse(courseId).catch(err => console.error('[Event course.published] Laravel sync error:', err.message));
 });
-eventBus.on('course.deleted',  async () => { await require('./shared/utils/cache').invalidatePattern('courses:list:*'); });
+eventBus.on('course.deleted',  async ({ courseId }) => {
+  await require('./shared/utils/cache').invalidatePattern('courses:list:*');
+  require('./shared/utils/laravelSync').deleteCourse(courseId).catch(err => console.error('[Event course.deleted] Laravel delete error:', err.message));
+});
 eventBus.on('enrollment.created', async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
 eventBus.on('course.completed',   async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });
 eventBus.on('user.registered',    async () => { await require('./shared/utils/cache').invalidate('admin:analytics'); });

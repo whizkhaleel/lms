@@ -18,9 +18,11 @@ const NavItem = ({ to, icon: Icon, label, end = false, badge, light, onClick }) 
     className={({ isActive }) => clsx(
       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
       isActive
-        ? 'bg-[#1A6FBF]/20 text-[#3B9EE8] border border-[#1A6FBF]/30'
+        ? light
+          ? 'bg-[#1A6FBF]/10 text-[#1A6FBF] font-semibold border border-[#1A6FBF]/20'
+          : 'bg-[#1A6FBF]/20 text-[#3B9EE8] border border-[#1A6FBF]/30'
         : light
-          ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+          ? 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
           : 'text-gray-400 hover:text-white hover:bg-white/5'
     )}
   >
@@ -36,7 +38,7 @@ const NavItem = ({ to, icon: Icon, label, end = false, badge, light, onClick }) 
 
 const SectionLabel = ({ label, light }) => (
   <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mt-5 mb-1"
-     style={{ color: light ? '#64748B' : '#4B5563' }}>
+     style={{ color: light ? '#475569' : '#4B5563' }}>
     {label}
   </p>
 );
@@ -63,7 +65,7 @@ export default function Sidebar({ open, onClose }) {
         'border-r flex flex-col overflow-y-auto',
         'transition-transform duration-300',
         open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      )} style={{ background: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}>
+      )} style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
         <div className="flex flex-col gap-1 p-3 flex-1">
 
           {/* Student / Admin learning nav (hidden for pure instructors) */}

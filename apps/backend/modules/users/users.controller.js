@@ -161,7 +161,20 @@ async function listUsers(req, res, next) {
     let params     = [];
     let i          = 1;
 
-    if (role)   { conditions.push(`role = $${i++}`);   params.push(role); }
+    if (role) {
+      if (role.includes(',')) {
+        const roles = role.split(',');
+        const placeholders = [];
+        roles.forEach(r => {
+          placeholders.push(`$${i++}`);
+          params.push(r);
+        });
+        conditions.push(`role IN (${placeholders.join(', ')})`);
+      } else {
+        conditions.push(`role = $${i++}`);
+        params.push(role);
+      }
+    }
     if (status) { conditions.push(`status = $${i++}`); params.push(status); }
     if (search) {
       conditions.push(`(email ILIKE $${i} OR first_name ILIKE $${i} OR last_name ILIKE $${i})`);

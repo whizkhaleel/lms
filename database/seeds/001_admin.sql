@@ -22,4 +22,4 @@ INSERT INTO users (
   'super_admin',
   'active',
   NOW()
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) WHERE deleted_at IS NULL DO NOTHING;

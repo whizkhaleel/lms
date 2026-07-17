@@ -16,7 +16,7 @@ module.exports = function authorize(...allowedRoles) {
       return next(ApiError.unauthorized());
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    if (req.user.role !== 'super_admin' && !allowedRoles.includes(req.user.role)) {
       return next(ApiError.forbidden(
         `Role '${req.user.role}' is not allowed to access this resource`
       ));

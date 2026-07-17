@@ -293,12 +293,13 @@ async function receiveWebhook(req) {
   await db.query(
     `INSERT INTO manual_payments (user_id, course_id, reference, origin, buyer_email,
        buyer_first_name, buyer_last_name, external_reference, status, recorded_by,
-       account_created, credentials_email_sent)
-     VALUES ($1, $2, $3, 'external_gateway', $4, $5, $6, $7, 'pending', $8, $9, false)`,
+       account_created, credentials_email_sent, notes)
+     VALUES ($1, $2, $3, 'external_gateway', $4, $5, $6, $7, 'pending', $8, $9, false, $10)`,
     [
       userId, courseId, `webhook-${externalReference}`,
       buyer.email, buyer.firstName || 'Student', buyer.lastName || '',
       externalReference, recordedBy, isNewUser,
+      tempPassword ? JSON.stringify({ tempPassword }) : null,
     ]
   );
 
@@ -387,13 +388,22 @@ async function approvePendingEnrollment(paymentId, adminId) {
         'SELECT first_name FROM users WHERE id = $1',
         [payment.user_id]
       );
+      let tempPassword = 'Please check your email for login instructions';
+      if (payment.notes) {
+        try {
+          const parsed = JSON.parse(payment.notes);
+          if (parsed && parsed.tempPassword) {
+            tempPassword = parsed.tempPassword;
+          }
+        } catch (_) {}
+      }
       await sendMail({
         to: payment.buyer_email,
         subject: 'Your enrollment has been approved',
         html: welcomeCredentialsEmail({
           firstName: payment.buyer_first_name || 'Student',
           email: payment.buyer_email,
-          tempPassword: 'Please check your email for login instructions',
+          tempPassword,
           courseTitle,
         }),
       });
@@ -456,9 +466,78 @@ async function rejectPendingEnrollment(paymentId, adminId, reason) {
   return { type: 'rejected', paymentId };
 }
 
+async function telegramEnroll({ email, firstName, lastName, phone, courseId, paymentReference }) {
+  // Validate course exists
+  const { rows: courseRows } = await db.query(
+    `SELECT id, instructor_id, title FROM courses WHERE id = $1 AND deleted_at IS NULL`,
+    [courseId]
+  );
+  const course = courseRows[0];
+  if (!course) throw ApiError.notFound('Course not found');
+
+  // Check for duplicate payment references
+  const existing = await db.query(
+    `SELECT id FROM manual_payments WHERE external_reference = $1`,
+    [paymentReference]
+  );
+  if (existing.rows.length > 0) {
+    return { type: 'duplicate', message: 'Already processed' };
+  }
+
+  // Find or create user
+  const { rows: userRows } = await db.query(
+    'SELECT id, email FROM users WHERE email = $1',
+    [email]
+  );
+
+  let userId;
+  let isNewUser = false;
+  let tempPassword;
+
+  if (userRows.length > 0) {
+    userId = userRows[0].id;
+  } else {
+    isNewUser = true;
+    tempPassword = generateTempPassword();
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
+
+    const { rows: newUser } = await db.query(
+      `INSERT INTO users (first_name, last_name, email, password_hash, role, status, email_verified_at)
+       VALUES ($1, $2, $3, $4, 'student', 'active', NOW())
+       RETURNING id`,
+      [firstName || 'Student', lastName || '', email, passwordHash]
+    );
+    userId = newUser[0].id;
+  }
+
+  const recordedBy = course.instructor_id || userId;
+
+  // Insert pending manual_payment (using 'external_gateway' origin to match enum values)
+  await db.query(
+    `INSERT INTO manual_payments (user_id, course_id, reference, origin, buyer_email,
+       buyer_first_name, buyer_last_name, external_reference, status, recorded_by,
+       account_created, credentials_email_sent, notes)
+     VALUES ($1, $2, $3, 'external_gateway', $4, $5, $6, $7, 'pending', $8, $9, false, $10)`,
+    [
+      userId, courseId, `telegram-${paymentReference}`,
+      email, firstName || 'Student', lastName || '',
+      paymentReference, recordedBy, isNewUser,
+      tempPassword ? JSON.stringify({ tempPassword, telegram: true }) : JSON.stringify({ telegram: true }),
+    ]
+  );
+
+  await adminService.invalidateAnalyticsCache();
+
+  return {
+    type: 'pending_review',
+    message: 'Telegram enrollment pending admin approval',
+  };
+}
+
 module.exports = {
   enroll, myEnrollments, getEnrollment, listEnrollments,
   courseEnrollments, manualEnroll, revokeEnrollment,
   receiveWebhook,
   listPendingEnrollments, approvePendingEnrollment, rejectPendingEnrollment,
+  telegramEnroll,
 };

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { BookOpen, Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Trash2, Search, ChevronLeft, ChevronRight, Plus, Edit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
@@ -91,8 +91,19 @@ export default function AdminCoursesPage() {
                 {courses.map(c => (
                   <tr key={c.id} className="hover:bg-white/[0.01]">
                     <td className="px-5 py-4">
-                      <p className="text-white font-medium">{c.title}</p>
-                      <p className="text-gray-500 text-xs">{c.slug}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-[#0D1B2A] flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-800">
+                          {c.thumbnail_path ? (
+                            <img src={`/lmsdata/${c.thumbnail_path}`} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <BookOpen size={16} className="text-gray-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{c.title}</p>
+                          <p className="text-gray-500 text-xs">{c.slug}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-gray-400 text-xs hidden lg:table-cell">
                       {c.instructor_name || '—'}
@@ -115,6 +126,10 @@ export default function AdminCoursesPage() {
                             className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-green-400"
                             title="Publish"><Eye size={14} /></button>
                         )}
+                        <Link to={`/instructor/courses/${c.id}/edit`}>
+                          <button className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-blue-400"
+                            title="Edit details and curriculum"><Edit size={14} /></button>
+                        </Link>
                         <button onClick={() => { if (confirm('Delete this course?')) deleteMutation.mutate(c.id); }}
                           className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-red-400"
                           title="Delete"><Trash2 size={14} /></button>

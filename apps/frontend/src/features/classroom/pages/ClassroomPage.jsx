@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, FileText, MessageSquare, Megaphone, CalendarDays, CheckCircle, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, MessageSquare, Megaphone, CalendarDays, CheckCircle, Play, Menu } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import api            from '../../../shared/api/client';
@@ -21,6 +21,7 @@ export default function ClassroomPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState('lesson'); // 'lesson' | 'announcements'
   const accessToken = useAuthStore(s => s.accessToken);
+  const [lessonSidebarOpen, setLessonSidebarOpen] = useState(false);
 
   // Load full course progress (sections + lessons list)
   const { data: progress, error: progressError, refetch: refetchProgress } = useQuery({
@@ -98,9 +99,20 @@ export default function ClassroomPage() {
   return (
     <div className="flex h-[calc(100vh-64px)] overflow-hidden">
 
+      {/* Mobile overlay for lesson sidebar */}
+      {lessonSidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+          onClick={() => setLessonSidebarOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar: lesson list ── */}
-      <aside className="hidden lg:flex flex-col w-72 flex-shrink-0
-                        border-r border-gray-800 bg-[#0D1B2A] overflow-hidden">
+      <aside className={clsx(
+        'fixed inset-y-16 left-0 z-30 w-72 flex flex-col border-r border-gray-800 bg-[#0D1B2A] overflow-hidden transition-transform duration-300',
+        'lg:static lg:translate-x-0',
+        lessonSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      )}>
         <div className="p-4 border-b border-gray-800">
           <h2 className="font-semibold text-white text-sm line-clamp-2">
             {progress?.course_title || 'Course'}
@@ -111,14 +123,14 @@ export default function ClassroomPage() {
             ? <CourseProgress
                 courseId={courseId}
                 activeLessonId={activeLessonId}
-                onSelectLesson={(id) => { setView('lesson'); goToLesson(id); }}
+                onSelectLesson={(id) => { setView('lesson'); goToLesson(id); setLessonSidebarOpen(false); }}
               />
             : <div className="flex justify-center py-10"><Spinner /></div>
           }
         </div>
         {/* Sidebar footer links */}
         <div className="border-t border-gray-800 p-3 space-y-1">
-          <button onClick={() => setView(view === 'announcements' ? 'lesson' : 'announcements')}
+          <button onClick={() => { setView(view === 'announcements' ? 'lesson' : 'announcements'); setLessonSidebarOpen(false); }}
             className={clsx('w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
               view === 'announcements'
                 ? 'bg-blue-500/10 text-blue-400'
@@ -158,6 +170,10 @@ export default function ClassroomPage() {
             <span className="text-sm text-white font-medium">Getting Started</span>
           ) : (
             <div className="flex items-center gap-3">
+              <button onClick={() => setLessonSidebarOpen(true)}
+                className="btn-ghost p-1.5 rounded-lg lg:hidden mr-1">
+                <Menu size={18} />
+              </button>
               <button onClick={() => prevLesson && goToLesson(prevLesson.id)}
                 disabled={!prevLesson}
                 className="btn-ghost p-1.5 rounded-lg disabled:opacity-30">

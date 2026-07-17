@@ -23,7 +23,7 @@ export default function AdminEnrollmentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-enrollments', page, courseFilter, search],
     queryFn: () => api.get('/enrollments', {
-      params: { page, limit: 20, courseId: courseFilter || undefined },
+      params: { page, limit: 20, courseId: courseFilter || undefined, search: search || undefined },
     }).then(r => r.data),
     enabled: tab === 'active',
   });
@@ -180,11 +180,11 @@ export default function AdminEnrollmentsPage() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-7 h-7 rounded-full bg-[#1A6FBF] flex items-center justify-center text-white text-xs font-bold">
-                            {e.first_name?.[0]}
+                            {e.student_name?.[0] || '?'}
                           </div>
                           <div>
-                            <p className="text-white text-sm">{e.first_name} {e.last_name}</p>
-                            <p className="text-gray-500 text-xs">{e.email}</p>
+                            <p className="text-white text-sm">{e.student_name}</p>
+                            <p className="text-gray-500 text-xs">{e.student_email}</p>
                           </div>
                         </div>
                       </td>

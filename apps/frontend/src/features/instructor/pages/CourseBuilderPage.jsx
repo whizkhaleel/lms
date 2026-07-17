@@ -6,7 +6,7 @@ import {
   BookOpen, Plus, Trash2, GripVertical, Video, FileText, HelpCircle,
   ClipboardList, Eye, Upload, ChevronDown, ChevronRight, Save, EyeOff, BarChart3,
   Lock, Unlock, X, Megaphone, Database, Package, ExternalLink, Globe,
-  Calendar, Settings, ToggleLeft,
+  Calendar, Settings, ToggleLeft, Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../shared/api/client';
@@ -33,6 +33,15 @@ const LESSON_TYPES = [
   { value: 'lti', label: 'LTI Tool', icon: Globe },
 ];
 
+const TAB_CONFIG = {
+  details: { label: 'Course Details', icon: FileText },
+  curriculum: { label: 'Curriculum', icon: BookOpen },
+  settings: { label: 'Settings', icon: Settings },
+  announcements: { label: 'Announcements', icon: Megaphone },
+  'question-bank': { label: 'Question Bank', icon: HelpCircle },
+  groups: { label: 'Groups', icon: Users },
+};
+
 export default function CourseBuilderPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -45,6 +54,7 @@ export default function CourseBuilderPage() {
     title: '', description: '', shortDescription: '', categoryId: '',
     level: 'beginner', language: 'English',
     tags: '', requirements: '', objectives: '',
+    price: '', duration: '',
   });
   const [settings, setSettings] = useState({
     startDate: '',
@@ -87,6 +97,8 @@ export default function CourseBuilderPage() {
           tags: (c.tags || []).join(', '),
           requirements: (c.requirements || []).join(', '),
           objectives: (c.objectives || []).join(', '),
+          price: c.metadata?.price?.toString() || '',
+          duration: c.metadata?.duration || '',
         });
         setSettings({
           startDate: c.start_date ? c.start_date.slice(0, 16) : '',
@@ -224,6 +236,11 @@ export default function CourseBuilderPage() {
       endDate: settings.endDate ? new Date(settings.endDate).toISOString() : null,
       enableCompletionTracking: settings.enableCompletionTracking,
       showGradesToStudent: settings.showGradesToStudent,
+      metadata: {
+        price: form.price ? Number(form.price) : 0,
+        duration: form.duration || '',
+        currency: 'NGN',
+      },
     };
 
     if (isEditing) {
@@ -280,92 +297,157 @@ export default function CourseBuilderPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-0 border-b border-gray-800 mb-6 overflow-x-auto">
+      <div className="flex gap-2 p-1.5 bg-white/[0.02] border border-gray-800 rounded-xl mb-6 overflow-x-auto w-max max-w-full">
         {['details', 'curriculum', 'settings', 'announcements', 'question-bank', 'groups'].filter(t => {
           if (isExactlyInstructor && t === 'details') return false;
           if (!isEditing && (t === 'announcements' || t === 'question-bank' || t === 'groups' || t === 'settings')) return false;
           return true;
-        }).map(t => (
-          <button key={t}
-            onClick={() => {
-              if (t === 'question-bank') navigate(`/instructor/courses/${id}/question-bank`);
-              else if (t === 'groups') navigate(`/instructor/courses/${id}/groups`);
-              else setTab(t);
-            }}
-            className={clsx('px-5 py-3 text-sm font-medium capitalize border-b-2 transition-colors',
-              tab === t ? 'border-[#3B9EE8] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
-            )}
-          >
-            {t === 'details' ? 'Course Details' : t === 'curriculum' ? 'Curriculum' : t === 'settings' ? 'Settings' : t === 'announcements' ? 'Announcements' : t === 'question-bank' ? 'Question Bank' : 'Groups'}
-          </button>
-        ))}
+        }).map(t => {
+          const config = TAB_CONFIG[t] || { label: t, icon: FileText };
+          const Icon = config.icon;
+          const isActive = tab === t;
+          return (
+            <button key={t}
+              onClick={() => {
+                if (t === 'question-bank') navigate(`/instructor/courses/${id}/question-bank`);
+                else if (t === 'groups') navigate(`/instructor/courses/${id}/groups`);
+                else setTab(t);
+              }}
+              className={clsx('flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap border',
+                isActive 
+                  ? 'bg-[#3B9EE8]/10 text-[#3B9EE8] border-[#3B9EE8]/20 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.01] border-transparent'
+              )}
+            >
+              <Icon size={16} />
+              {config.label}
+            </button>
+          );
+        })}
       </div>
 
       {tab === 'details' && (
-        <div className="max-w-2xl space-y-5">
-          <Input label="Course title" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-            placeholder="e.g. Introduction to Web Development" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          {/* Left Column - Main Info */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="card p-6 space-y-5">
+              <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3" style={{ color: 'var(--text-primary)' }}>
+                <FileText size={16} className="text-[#3B9EE8]" />
+                Basic Course Info
+              </h3>
+              
+              <Input label="Course title" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                placeholder="e.g. Introduction to Web Development" />
 
-          <div>
-            <label className="text-sm font-medium text-gray-300 mb-1.5 block">Description</label>
-            <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-              rows={5} className="input resize-none" placeholder="Full course description…" />
-          </div>
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Description</label>
+                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  rows={5} className="input resize-none" placeholder="Full course description…" />
+              </div>
 
-          <Input label="Short description" value={form.shortDescription}
-            onChange={e => setForm(p => ({ ...p, shortDescription: e.target.value }))}
-            placeholder="Brief summary shown in course cards" />
+              <Input label="Short description" value={form.shortDescription}
+                onChange={e => setForm(p => ({ ...p, shortDescription: e.target.value }))}
+                placeholder="Brief summary shown in course cards" />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select label="Category" value={form.categoryId}
-              onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}>
-              <option value="">Select category</option>
-              {(categories || []).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </Select>
-            <Select label="Level" value={form.level}
-              onChange={e => setForm(p => ({ ...p, level: e.target.value }))}>
-              {LEVELS.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
-            </Select>
-          </div>
+            <div className="card p-6 space-y-5">
+              <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3" style={{ color: 'var(--text-primary)' }}>
+                <ClipboardList size={16} className="text-[#3B9EE8]" />
+                Requirements & Objectives
+              </h3>
 
-          <Input label="Language" value={form.language}
-            onChange={e => setForm(p => ({ ...p, language: e.target.value }))} />
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Requirements (one per line)</label>
+                <textarea value={form.requirements}
+                  onChange={e => setForm(p => ({ ...p, requirements: e.target.value }))}
+                  rows={3} className="input resize-none" placeholder="Basic computer skills, Internet access" />
+              </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-300 mb-1.5 block">Tags (comma separated)</label>
-            <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
-              className="input" placeholder="html, css, javascript" />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-300 mb-1.5 block">Requirements (one per line)</label>
-            <textarea value={form.requirements}
-              onChange={e => setForm(p => ({ ...p, requirements: e.target.value }))}
-              rows={3} className="input resize-none" placeholder="Basic computer skills, Internet access" />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-300 mb-1.5 block">Objectives (one per line)</label>
-            <textarea value={form.objectives}
-              onChange={e => setForm(p => ({ ...p, objectives: e.target.value }))}
-              rows={3} className="input resize-none" placeholder="Build a REST API, Deploy to production" />
-          </div>
-
-          {isEditing && (
-            <div>
-              <label className="text-sm font-medium text-gray-300 mb-1.5 block">Thumbnail</label>
-              <div className="flex items-center gap-4">
-                <label className="btn-secondary btn cursor-pointer">
-                  <Upload size={14} /> Upload Image
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={e => { if (e.target.files[0]) thumbnailMut.mutate(e.target.files[0]); }} />
-                </label>
-                {thumbnailMut.isPending && <Spinner size="sm" />}
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Objectives (one per line)</label>
+                <textarea value={form.objectives}
+                  onChange={e => setForm(p => ({ ...p, objectives: e.target.value }))}
+                  rows={3} className="input resize-none" placeholder="Build a REST API, Deploy to production" />
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Right Column - Sidebar Settings */}
+          <div className="space-y-6">
+            <div className="card p-6 space-y-5">
+              <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3" style={{ color: 'var(--text-primary)' }}>
+                <Database size={16} className="text-[#3B9EE8]" />
+                Course Metadata
+              </h3>
+
+              <Select label="Category" value={form.categoryId}
+                onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}>
+                <option value="">Select category</option>
+                {(categories || []).map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Select>
+
+              <Select label="Level" value={form.level}
+                onChange={e => setForm(p => ({ ...p, level: e.target.value }))}>
+                {LEVELS.map(l => <option key={l} value={l}>{l.charAt(0).toUpperCase() + l.slice(1)}</option>)}
+              </Select>
+
+              <Input label="Language" value={form.language}
+                onChange={e => setForm(p => ({ ...p, language: e.target.value }))} />
+
+              <Input label="Price (NGN)" type="number" min="0" value={form.price}
+                onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+                placeholder="e.g. 5000" />
+
+              <Input label="Duration" value={form.duration}
+                onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
+                placeholder="e.g. 8 Weeks" />
+
+              <div>
+                <label className="text-sm font-medium text-gray-300 mb-1.5 block">Tags (comma separated)</label>
+                <input value={form.tags} onChange={e => setForm(p => ({ ...p, tags: e.target.value }))}
+                  className="input" placeholder="html, css, javascript" />
+              </div>
+            </div>
+
+            {isEditing && (
+              <div className="card p-6 space-y-5">
+                <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3" style={{ color: 'var(--text-primary)' }}>
+                  <Upload size={16} className="text-[#3B9EE8]" />
+                  Course Thumbnail
+                </h3>
+
+                <div className="space-y-4">
+                  {courseData?.thumbnail_path ? (
+                    <div className="relative group rounded-xl overflow-hidden border border-gray-800 bg-[#0D1B2A] aspect-video">
+                      <img src={`/lmsdata/${courseData.thumbnail_path}`} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <label className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs font-semibold text-white cursor-pointer transition-all duration-200">
+                          <Upload size={14} className="inline mr-1" /> Replace Image
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={e => { if (e.target.files[0]) thumbnailMut.mutate(e.target.files[0]); }} />
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-800 rounded-xl p-8 hover:border-[#3B9EE8]/50 hover:bg-white/[0.01] transition-all cursor-pointer group">
+                      <Upload size={24} className="text-gray-500 group-hover:text-[#3B9EE8] mb-2 transition-colors" />
+                      <p className="text-xs font-medium text-gray-300 group-hover:text-white transition-colors">Upload course thumbnail</p>
+                      <p className="text-[10px] text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => { if (e.target.files[0]) thumbnailMut.mutate(e.target.files[0]); }} />
+                    </label>
+                  )}
+                  {thumbnailMut.isPending && (
+                    <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                      <Spinner size="sm" /> Uploading image...
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -416,55 +498,65 @@ export default function CourseBuilderPage() {
       {tab === 'settings' && (
         <div className="max-w-xl space-y-6">
           <div className="card space-y-5">
-            <h3 className="font-semibold text-lg flex items-center gap-2"
+            <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3"
                 style={{ color: 'var(--text-primary)' }}>
-              <Calendar size={16} className="text-blue-400" />
+              <Calendar size={16} className="text-[#3B9EE8]" />
               Course Dates
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-1.5 block">Start Date</label>
-                <input type="datetime-local" value={settings.startDate}
-                  onChange={e => setSettings(p => ({ ...p, startDate: e.target.value }))}
-                  className="input" />
+                <div className="relative">
+                  <input type="datetime-local" value={settings.startDate}
+                    onChange={e => setSettings(p => ({ ...p, startDate: e.target.value }))}
+                    className="input" />
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-1.5 block">End Date</label>
-                <input type="datetime-local" value={settings.endDate}
-                  onChange={e => setSettings(p => ({ ...p, endDate: e.target.value }))}
-                  className="input" />
+                <div className="relative">
+                  <input type="datetime-local" value={settings.endDate}
+                    onChange={e => setSettings(p => ({ ...p, endDate: e.target.value }))}
+                    className="input" />
+                </div>
               </div>
             </div>
           </div>
 
           <div className="card space-y-5">
-            <h3 className="font-semibold text-lg flex items-center gap-2"
+            <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-gray-800 pb-3"
                 style={{ color: 'var(--text-primary)' }}>
-              <ToggleLeft size={16} className="text-blue-400" />
+              <ToggleLeft size={16} className="text-[#3B9EE8]" />
               Tracking & Grades
             </h3>
 
-            <label className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
-                   style={{ background: 'var(--bg-secondary)' }}>
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable Completion Tracking</p>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Track lesson completion progress for students</p>
-              </div>
-              <input type="checkbox" checked={settings.enableCompletionTracking}
-                onChange={e => setSettings(p => ({ ...p, enableCompletionTracking: e.target.checked }))}
-                className="toggle" />
-            </label>
+            <div className="space-y-4">
+              <label className="flex items-center justify-between p-4 rounded-xl border border-gray-800 bg-[#112236]/30 hover:border-gray-700 transition-all cursor-pointer">
+                <div className="pr-4">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Enable Completion Tracking</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Track lesson completion progress for students</p>
+                </div>
+                <div className="relative inline-flex items-center shrink-0">
+                  <input type="checkbox" checked={settings.enableCompletionTracking}
+                    onChange={e => setSettings(p => ({ ...p, enableCompletionTracking: e.target.checked }))}
+                    className="sr-only peer" />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-850 border border-gray-400 dark:border-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3B9EE8] peer-checked:border-[#3B9EE8]"></div>
+                </div>
+              </label>
 
-            <label className="flex items-center justify-between p-3 rounded-lg cursor-pointer"
-                   style={{ background: 'var(--bg-secondary)' }}>
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Show Grades to Students</p>
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Students can view their scores in the gradebook</p>
-              </div>
-              <input type="checkbox" checked={settings.showGradesToStudent}
-                onChange={e => setSettings(p => ({ ...p, showGradesToStudent: e.target.checked }))}
-                className="toggle" />
-            </label>
+              <label className="flex items-center justify-between p-4 rounded-xl border border-gray-800 bg-[#112236]/30 hover:border-gray-700 transition-all cursor-pointer">
+                <div className="pr-4">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Show Grades to Students</p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Students can view their scores in the gradebook</p>
+                </div>
+                <div className="relative inline-flex items-center shrink-0">
+                  <input type="checkbox" checked={settings.showGradesToStudent}
+                    onChange={e => setSettings(p => ({ ...p, showGradesToStudent: e.target.checked }))}
+                    className="sr-only peer" />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-850 border border-gray-400 dark:border-gray-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#3B9EE8] peer-checked:border-[#3B9EE8]"></div>
+                </div>
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end">
@@ -572,53 +664,65 @@ function SectionCard({ section, index, courseId, isExpanded, onToggle, onDelete,
   const lessons = section.lessons || [];
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onToggle}>
+    <div className="card overflow-hidden border-l-4 border-l-[#3B9EE8] transition-all duration-200">
+      <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/[0.01]" onClick={onToggle}>
         <div className="flex items-center gap-3">
-          <GripVertical size={16} className="text-gray-600 cursor-grab" />
+          <GripVertical size={16} className="text-gray-600 cursor-grab shrink-0" />
           <div>
-            <p className="font-medium text-white">
+            <p className="font-semibold text-white text-base">
               Section {index + 1}: {section.title}
             </p>
-            <p className="text-xs text-gray-500">{lessons.length} lesson{lessons.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {section.description || 'No description'} &bull; {lessons.length} lesson{lessons.length !== 1 ? 's' : ''}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={e => { e.stopPropagation(); onAddLesson(); }}
-            className="btn-ghost p-1.5 rounded-lg" title="Add lesson">
-            <Plus size={14} />
+            className="p-1.5 rounded-lg border border-gray-800 hover:border-gray-700 bg-white/[0.02] text-gray-400 hover:text-white transition-all flex items-center gap-1 text-xs" title="Add lesson">
+            <Plus size={14} /> Add Lesson
           </button>
           <button onClick={e => { e.stopPropagation(); onDelete(); }}
-            className="btn-ghost p-1.5 rounded-lg text-red-400" title="Delete section">
+            className="p-1.5 rounded-lg border border-transparent hover:bg-red-500/10 text-red-400 hover:text-red-300 transition-all" title="Delete section">
             <Trash2 size={14} />
           </button>
-          {isExpanded ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />}
+          <div className="p-1.5">
+            {isExpanded ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />}
+          </div>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="border-t border-gray-800 px-4 pb-4 pt-2 space-y-1">
+        <div className="border-t border-gray-800 bg-[#0F1E33]/30 px-6 py-4 space-y-2">
           {lessons.map((lesson, li) => (
             <div key={lesson.id}
-              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/[0.02] cursor-pointer group"
+              className="flex items-center justify-between py-3 px-4 rounded-xl border border-gray-800/60 bg-[#112236]/30 hover:bg-white/[0.01] hover:border-[#3B9EE8]/30 transition-all cursor-pointer group"
               onClick={() => onEditLesson(lesson)}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-600 w-5 text-right">{li + 1}.</span>
-                <LessonTypeIcon type={lesson.type} />
-                <span className="text-sm text-gray-300">{lesson.title}</span>
-
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xs text-gray-600 w-5 text-right font-medium shrink-0">{li + 1}.</span>
+                <div className="p-1.5 bg-[#0D1B2A] rounded-lg border border-gray-800 shrink-0">
+                  <LessonTypeIcon type={lesson.type} />
+                </div>
+                <span className="text-sm font-medium text-gray-300 group-hover:text-white truncate transition-colors mr-2">{lesson.title}</span>
+                <LessonTypeBadge type={lesson.type} />
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-gray-500 hidden sm:inline mr-2">
+                  {lesson.duration_seconds ? `${Math.round(lesson.duration_seconds / 60)} mins` : 'No duration'}
+                </span>
                 <button onClick={e => { e.stopPropagation(); onEditLesson(lesson); }}
-                  className="btn-ghost p-1 rounded text-gray-500 hover:text-white">
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100">
                   Edit
                 </button>
               </div>
             </div>
           ))}
           {lessons.length === 0 && (
-            <p className="text-center text-gray-600 text-sm py-4">No lessons yet</p>
+            <div className="text-center py-6 text-gray-500 border border-dashed border-gray-800 rounded-xl bg-black/[0.02]">
+              <HelpCircle size={20} className="mx-auto mb-1.5 text-gray-700" />
+              <p className="text-xs">No lessons added to this section yet.</p>
+            </div>
           )}
         </div>
       )}
@@ -630,6 +734,23 @@ function LessonTypeIcon({ type }) {
   const map = { video: Video, text: FileText, quiz: HelpCircle, assignment: ClipboardList, scorm: Package, lti: Globe };
   const Icon = map[type] || FileText;
   return <Icon size={14} className="text-gray-500" />;
+}
+
+function LessonTypeBadge({ type }) {
+  const map = {
+    video: { label: 'Video', class: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    text: { label: 'Article', class: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+    quiz: { label: 'Quiz', class: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+    assignment: { label: 'Assignment', class: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    scorm: { label: 'SCORM', class: 'bg-orange-500/10 text-orange-400 border-orange-500/20' },
+    lti: { label: 'LTI Tool', class: 'bg-teal-500/10 text-teal-400 border-teal-500/20' },
+  };
+  const config = map[type] || { label: type, class: 'bg-gray-500/10 text-gray-400 border-gray-500/20' };
+  return (
+    <span className={clsx('text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize shrink-0', config.class)}>
+      {config.label}
+    </span>
+  );
 }
 
 function LessonModal({ open, onClose, courseId, sectionId, lesson, courseLessons = [], onSaved, onAnalytics }) {

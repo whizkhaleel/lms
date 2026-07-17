@@ -11,7 +11,7 @@
 
 -- ── Courses (owned by admin) ──────────────────
 INSERT INTO courses (id, title, slug, description, short_description, status, instructor_id, category_id, level, language, tags, objectives, duration_seconds, lesson_count, published_at)
-SELECT * FROM (VALUES
+SELECT column1::uuid, column2, column3, column4, column5, column6::course_status, column7::uuid, column8::uuid, column9, column10, column11::text[], column12::text[], column13::integer, column14::integer, column15::timestamp FROM (VALUES
   ('c3000000-0000-0000-0000-000000000001',
    'JavaScript Mastery: From Zero to Hero',
    'javascript-mastery',
@@ -49,11 +49,11 @@ SELECT * FROM (VALUES
    ARRAY['Validate your business idea','Write a professional business plan','Understand startup finances','Launch and market your product'],
    21600, 18, NOW() - INTERVAL '15 days')
 ) AS v
-WHERE NOT EXISTS (SELECT 1 FROM courses c WHERE c.id = v.column1);
+WHERE NOT EXISTS (SELECT 1 FROM courses c WHERE c.id = v.column1::uuid);
 
 -- ── Sections ─────────────────────────────────
 INSERT INTO sections (id, course_id, title, description, sort_order)
-SELECT * FROM (VALUES
+SELECT column1::uuid, column2::uuid, column3, column4, column5::integer FROM (VALUES
   ('d4000000-0000-0000-0001-000000000001', 'c3000000-0000-0000-0000-000000000001', 'Getting Started', 'Environment setup and first steps', 1),
   ('d4000000-0000-0000-0001-000000000002', 'c3000000-0000-0000-0000-000000000001', 'Variables & Data Types', 'Understanding the building blocks', 2),
   ('d4000000-0000-0000-0001-000000000003', 'c3000000-0000-0000-0000-000000000001', 'Functions & Scope', 'Deep dive into functions', 3),
@@ -66,11 +66,11 @@ SELECT * FROM (VALUES
   ('d4000000-0000-0000-0003-000000000002', 'c3000000-0000-0000-0000-000000000003', 'Business Planning', 'Writing a lean business plan', 2),
   ('d4000000-0000-0000-0003-000000000003', 'c3000000-0000-0000-0000-000000000003', 'Marketing & Sales', 'Getting your first customers', 3)
 ) AS v
-WHERE NOT EXISTS (SELECT 1 FROM sections s WHERE s.id = v.column1);
+WHERE NOT EXISTS (SELECT 1 FROM sections s WHERE s.id = v.column1::uuid);
 
 -- ── Lessons ──────────────────────────────────
-INSERT INTO lessons (id, section_id, course_id, title, type, content, duration_seconds, sort_order, is_free_preview, is_published)
-SELECT * FROM (VALUES
+INSERT INTO lessons (id, section_id, course_id, title, type, content, duration_seconds, sort_order, is_published)
+SELECT column1::uuid, column2::uuid, column3::uuid, column4, column5::lesson_type, column6, column7::integer, column8::integer, column10::boolean FROM (VALUES
   -- Course 1 / Section 1: Getting Started
   ('e5000000-0001-0000-0000-000000000001', 'd4000000-0000-0000-0001-000000000001', 'c3000000-0000-0000-0000-000000000001',
    'Welcome & Course Overview', 'video', 'Introduction to the course structure, what you will learn, and how to get the most out of this journey.', 480, 1, true, true),
@@ -111,4 +111,4 @@ SELECT * FROM (VALUES
   ('e5000000-0007-0000-0000-000000000002', 'd4000000-0000-0000-0003-000000000002', 'c3000000-0000-0000-0000-000000000003',
    'Financial Projections for Startups', 'video', 'Build realistic financial projections for your new venture.', 1080, 2, false, true)
 ) AS v
-WHERE NOT EXISTS (SELECT 1 FROM lessons l WHERE l.id = v.column1);
+WHERE NOT EXISTS (SELECT 1 FROM lessons l WHERE l.id = v.column1::uuid);
