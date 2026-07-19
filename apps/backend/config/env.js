@@ -1,18 +1,24 @@
 'use strict';
 
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // ── Validate all required env vars at startup ──
 // App crashes immediately if something is missing.
 // No silent failures in production.
 
 const required = [
-  'POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB',
-  'POSTGRES_USER', 'POSTGRES_PASSWORD',
-  'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD',
   'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET',
   'PAYMENT_WEBHOOK_SECRET',
 ];
+
+if (!process.env.DATABASE_URL) {
+  required.push('POSTGRES_HOST', 'POSTGRES_PORT', 'POSTGRES_DB', 'POSTGRES_USER', 'POSTGRES_PASSWORD');
+}
+
+if (!process.env.REDIS_URL) {
+  required.push('REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD');
+}
 
 const missing = required.filter((key) => !process.env[key]);
 if (missing.length > 0) {

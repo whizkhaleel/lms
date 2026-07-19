@@ -3,25 +3,31 @@
 const { Pool } = require('pg');
 const env      = require('./env');
 
-const pool = new Pool({
-  host:     env.POSTGRES_HOST,
-  port:     env.POSTGRES_PORT,
-  database: env.POSTGRES_DB,
-  user:     env.POSTGRES_USER,
-  password: env.POSTGRES_PASSWORD,
-
-  // Pool config — tuned for production
-  min:             2,    // keep 2 idle connections ready
-  max:             25,   // max concurrent connections
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-
-  // SSL — enable via PGSSLMODE=require env var
-  // Docker-to-Docker Postgres does not need SSL
-  ssl: process.env.PGSSLMODE === 'require'
-    ? { rejectUnauthorized: true }
-    : false,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        min:             2,
+        max:             25,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+      }
+    : {
+        host:     env.POSTGRES_HOST,
+        port:     env.POSTGRES_PORT,
+        database: env.POSTGRES_DB,
+        user:     env.POSTGRES_USER,
+        password: env.POSTGRES_PASSWORD,
+        min:             2,
+        max:             25,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
+        ssl: process.env.PGSSLMODE === 'require'
+          ? { rejectUnauthorized: true }
+          : false,
+      }
+);
 
 // Log connection events
 pool.on('connect', () => {

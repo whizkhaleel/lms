@@ -313,6 +313,7 @@ async function unpublishCourse(courseId, requestingUser) {
      WHERE id = $1 RETURNING id, title, status`,
     [courseId]
   );
+  eventBus.emit('course.updated', { courseId, instructorId: course.instructor_id });
   return updated[0];
 }
 

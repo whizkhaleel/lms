@@ -52,13 +52,21 @@ function env(name, fallbackName, defaultValue) {
 }
 
 async function getClient() {
-  const client = new Client({
-    host: IN_DOCKER ? env('POSTGRES_HOST', 'DB_HOST', 'postgres') : env('DB_HOST', 'POSTGRES_HOST', 'localhost'),
-    port: parseInt(IN_DOCKER ? env('POSTGRES_PORT', 'DB_PORT', '5432') : env('DB_PORT', 'POSTGRES_PORT', '5432'), 10),
-    database: IN_DOCKER ? env('POSTGRES_DB', 'DB_NAME', 'lms_db') : env('DB_NAME', 'POSTGRES_DB', 'lms_db'),
-    user: IN_DOCKER ? env('POSTGRES_USER', 'DB_USER', 'lms_user') : env('DB_USER', 'POSTGRES_USER', 'lms_user'),
-    password: IN_DOCKER ? env('POSTGRES_PASSWORD', 'DB_PASSWORD') : env('DB_PASSWORD', 'POSTGRES_PASSWORD'),
-  });
+  let client;
+  if (process.env.DATABASE_URL) {
+    client = new Client({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
+  } else {
+    client = new Client({
+      host: IN_DOCKER ? env('POSTGRES_HOST', 'DB_HOST', 'postgres') : env('DB_HOST', 'POSTGRES_HOST', 'localhost'),
+      port: parseInt(IN_DOCKER ? env('POSTGRES_PORT', 'DB_PORT', '5432') : env('DB_PORT', 'POSTGRES_PORT', '5432'), 10),
+      database: IN_DOCKER ? env('POSTGRES_DB', 'DB_NAME', 'lms_db') : env('DB_NAME', 'POSTGRES_DB', 'lms_db'),
+      user: IN_DOCKER ? env('POSTGRES_USER', 'DB_USER', 'lms_user') : env('DB_USER', 'POSTGRES_USER', 'lms_user'),
+      password: IN_DOCKER ? env('POSTGRES_PASSWORD', 'DB_PASSWORD') : env('DB_PASSWORD', 'POSTGRES_PASSWORD'),
+    });
+  }
 
   await client.connect();
   return client;

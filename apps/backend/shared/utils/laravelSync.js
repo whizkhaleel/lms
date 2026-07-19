@@ -11,12 +11,18 @@ async function syncCourse(courseId) {
 
   try {
     const { rows } = await db.query(
-      'SELECT id, title, description, metadata, thumbnail_file_id FROM courses WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT id, title, description, metadata, thumbnail_file_id, status FROM courses WHERE id = $1 AND deleted_at IS NULL',
       [courseId]
     );
     const course = rows[0];
     if (!course) {
       console.warn(`[LaravelSync] Course ${courseId} not found in DB for sync.`);
+      return;
+    }
+
+    if (course.status !== 'published') {
+      console.log(`[LaravelSync] Course ${courseId} is in status "${course.status}". Deleting from bot system...`);
+      await deleteCourse(courseId);
       return;
     }
 
@@ -85,4 +91,31 @@ async function deleteCourse(courseId) {
   }
 }
 
-module.exports = { syncCourse, deleteCourse };
+async function listCourses() {
+  if (!env.LARAVEL_BOT_URL || !env.TELEGRAM_INTEGRATION_TOKEN) {
+    console.warn('[LaravelSync] Integration variables are not fully configured. Skipping listing.');
+    return [];
+  }
+
+  try {
+    const response = await fetch(`${env.LARAVEL_BOT_URL}/api/courses`, {
+      method: 'GET',
+      headers: {
+        'x-telegram-token': env.TELEGRAM_INTEGRATION_TOKEN,
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`[LaravelSync] List failed with status ${response.status}: ${text}`);
+      return [];
+    }
+
+    return await response.json();
+  } catch (err) {
+    console.error('[LaravelSync] Network error listing courses:', err.message);
+    return [];
+  }
+}
+
+module.exports = { syncCourse, deleteCourse, listCourses };

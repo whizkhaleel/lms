@@ -405,7 +405,7 @@ async function runMigrations() {
     const { verifyConnection } = require('./shared/mailer/mailer');
     verifyConnection(); // non-fatal — logs a warning if SMTP isn't reachable
 
-    const PORT = env.BACKEND_PORT || 5000;
+    const PORT = process.env.PORT || env.BACKEND_PORT || 5000;
     server.listen(PORT, () => {
       console.log(`
 ╔══════════════════════════════════════╗

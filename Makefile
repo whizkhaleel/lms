@@ -7,7 +7,7 @@
         logs logs-backend logs-frontend logs-db logs-worker logs-nginx logs-redis logs-minio \
         migrate seed migrate-reset shell-backend shell-db shell-redis \
         test test-unit test-integration test-coverage lint lint-frontend build-frontend \
-        install-backend install-frontend ps
+        install-backend install-frontend ps prod-up prod-down prod-build
 
 COMPOSE := docker compose
 
@@ -16,12 +16,15 @@ help:
 	@echo ""
 	@echo "  LMS Platform - Available Commands"
 	@echo "  ---------------------------------"
-	@echo "  make up                 Start all containers"
-	@echo "  make down               Stop and remove containers"
+	@echo "  make up                 Start all containers (Dev)"
+	@echo "  make down               Stop and remove containers (Dev)"
 	@echo "  make stop               Stop containers without removing them"
 	@echo "  make restart            Restart all containers"
-	@echo "  make build              Rebuild images and start containers"
-	@echo "  make rebuild            Rebuild images without cache and start containers"
+	@echo "  make build              Rebuild images and start containers (Dev)"
+	@echo "  make rebuild            Rebuild images without cache and start containers (Dev)"
+	@echo "  make prod-up            Start all containers in Production"
+	@echo "  make prod-down          Stop and remove containers in Production"
+	@echo "  make prod-build         Rebuild images and start containers in Production"
 	@echo "  make pull               Pull service images"
 	@echo "  make config             Validate and render Compose config"
 	@echo "  make status             Show container status"
@@ -53,7 +56,7 @@ help:
 	@echo "  make build-frontend     Build frontend app"
 	@echo ""
 
-# Docker
+# Docker (Development)
 up:
 	$(COMPOSE) up -d
 
@@ -68,6 +71,16 @@ restart:
 
 build:
 	$(COMPOSE) up -d --build
+
+# Docker (Production)
+prod-up:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+prod-down:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml down
+
+prod-build:
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 rebuild:
 	$(COMPOSE) build --no-cache

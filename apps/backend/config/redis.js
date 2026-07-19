@@ -3,14 +3,18 @@
 const { createClient } = require('redis');
 const env              = require('./env');
 
-const client = createClient({
-  socket: {
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    connectTimeout: 10000,
-  },
-  password: env.REDIS_PASSWORD,
-});
+const client = createClient(
+  process.env.REDIS_URL
+    ? { url: process.env.REDIS_URL }
+    : {
+        socket: {
+          host: env.REDIS_HOST,
+          port: env.REDIS_PORT,
+          connectTimeout: 10000,
+        },
+        password: env.REDIS_PASSWORD,
+      }
+);
 
 client.on('connect', () => {
   console.log('[Redis] Connected');
