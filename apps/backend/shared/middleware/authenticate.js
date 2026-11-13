@@ -13,6 +13,11 @@ const redis    = require('../../config/redis');
  */
 module.exports = async function authenticate(req, res, next) {
   try {
+    // Bypass public telegram integration endpoint
+    if (req.path === '/telegram-enroll' || req.originalUrl?.includes('/telegram-enroll')) {
+      return next();
+    }
+
     let token;
 
     const authHeader = req.headers.authorization;

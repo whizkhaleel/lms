@@ -113,6 +113,7 @@ app.use('/api/v1/messages',                    messageRoutes);        // ← Pha
 app.use('/api/v1/notifications',               notificationRoutes);   // ← Phase 6
 app.use('/api/v1/certificates',                certificateRoutes);    // ← Phase 8
 app.use('/api/v1/payments/webhook',             paymentWebhookRoutes); // ← External payment gateway
+app.post('/api/v1/telegram-enroll',            require('./modules/enrollments/enrollments.controller').telegramEnroll);
 app.use('/api/v1/calendar',                      calendarRoutes);
 app.use('/api/v1/scorm',                        scormRoutes);
 app.use('/api/v1/lti',                          ltiRoutes);

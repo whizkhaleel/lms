@@ -1,11 +1,11 @@
 'use strict';
 
-const db       = require('../../config/db');
+const db = require('../../config/db');
 const ApiError = require('../../shared/utils/apiError');
 const eventBus = require('../../shared/events/eventBus');
-const crypto   = require('crypto');
-const bcrypt   = require('bcryptjs');
-const env      = require('../../config/env');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const env = require('../../config/env');
 const { sendMail } = require('../../shared/mailer/mailer');
 const { welcomeCredentialsEmail, enrollmentConfirmedEmail } = require('../../shared/mailer/templates');
 const { generateTempPassword } = require('../../shared/utils/generatePasswords');
@@ -223,7 +223,7 @@ function verifyWebhookSignature(payload, signature) {
 
 async function receiveWebhook(req) {
   const signature = req.headers['x-webhook-signature'];
-  const rawBody   = req.body;
+  const rawBody = req.body;
 
   if (!verifyWebhookSignature(rawBody.toString(), signature)) {
     throw ApiError.unauthorized('Invalid webhook signature');
@@ -395,7 +395,7 @@ async function approvePendingEnrollment(paymentId, adminId) {
           if (parsed && parsed.tempPassword) {
             tempPassword = parsed.tempPassword;
           }
-        } catch (_) {}
+        } catch (_) { }
       }
       await sendMail({
         to: payment.buyer_email,
@@ -467,13 +467,46 @@ async function rejectPendingEnrollment(paymentId, adminId, reason) {
 }
 
 async function telegramEnroll({ email, firstName, lastName, phone, courseId, paymentReference }) {
-  // Validate course exists
-  const { rows: courseRows } = await db.query(
-    `SELECT id, instructor_id, title FROM courses WHERE id = $1 AND deleted_at IS NULL`,
-    [courseId]
-  );
-  const course = courseRows[0];
-  if (!course) throw ApiError.notFound('Course not found');
+  const trimmedCourseId = String(courseId || '').trim();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmedCourseId);
+
+  let course;
+  if (isUuid) {
+    const { rows } = await db.query(
+      `SELECT id, instructor_id, title FROM courses WHERE id = $1 AND deleted_at IS NULL`,
+      [trimmedCourseId]
+    );
+    course = rows[0];
+  } else {
+    // If not a UUID, resolve flexibly by slug or title
+    const hyphenSlug = trimmedCourseId.toLowerCase().replace(/_/g, '-');
+    const titleFromSlug = trimmedCourseId.replace(/_/g, ' ');
+    const { rows } = await db.query(
+      `SELECT id, instructor_id, title FROM courses 
+       WHERE (
+         slug = $1 
+         OR slug = $2 
+         OR LOWER(title) = LOWER($3)
+         OR LOWER(title) = LOWER($4)
+         OR LOWER(slug) ILIKE $5
+         OR LOWER(title) ILIKE $5
+       ) AND deleted_at IS NULL
+       ORDER BY 
+         CASE 
+           WHEN slug = $1 THEN 1
+           WHEN slug = $2 THEN 2
+           WHEN LOWER(title) = LOWER($3) THEN 3
+           ELSE 4
+         END
+       LIMIT 1`,
+      [trimmedCourseId, hyphenSlug, titleFromSlug, trimmedCourseId, `%${hyphenSlug}%`]
+    );
+    course = rows[0];
+  }
+
+  if (!course) {
+    throw ApiError.notFound(`Course '${courseId}' not found in LMS`);
+  }
 
   // Check for duplicate payment references
   const existing = await db.query(
@@ -519,7 +552,7 @@ async function telegramEnroll({ email, firstName, lastName, phone, courseId, pay
        account_created, credentials_email_sent, notes)
      VALUES ($1, $2, $3, 'external_gateway', $4, $5, $6, $7, 'pending', $8, $9, false, $10)`,
     [
-      userId, courseId, `telegram-${paymentReference}`,
+      userId, course.id, `telegram-${paymentReference}`,
       email, firstName || 'Student', lastName || '',
       paymentReference, recordedBy, isNewUser,
       tempPassword ? JSON.stringify({ tempPassword, telegram: true }) : JSON.stringify({ telegram: true }),
